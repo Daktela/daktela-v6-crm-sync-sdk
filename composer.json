@@ -12,8 +12,8 @@
         }
     ],
     "support": {
-        "issues": "https://github.com/daktela/crm-sync/issues",
-        "source": "https://github.com/daktela/crm-sync"
+        "issues": "https://github.com/Daktela/daktela-v6-crm-sync-sdk/issues",
+        "source": "https://github.com/Daktela/daktela-v6-crm-sync-sdk"
     },
     "require": {
         "php": ">=8.2",
