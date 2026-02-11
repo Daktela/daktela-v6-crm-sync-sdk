@@ -1,0 +1,15 @@
+entity: activity
+lookup_field: name
+mappings:
+  - source: name
+    target: external_id
+    direction: cc_to_crm
+  - source: title
+    target: subject
+    direction: cc_to_crm
+  - source: time_start
+    target: start_time
+    direction: cc_to_crm
+    transformers:
+      - name: date_format
+        params: { from: "Y-m-d H:i:s", to: "c" }

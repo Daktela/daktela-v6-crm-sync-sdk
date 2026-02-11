@@ -1,0 +1,39 @@
+entity: activity
+lookup_field: name
+mappings:
+  - source: name
+    target: external_id
+    direction: cc_to_crm
+
+  - source: title
+    target: subject
+    direction: cc_to_crm
+
+  - source: time_start
+    target: start_time
+    direction: cc_to_crm
+    transformers:
+      - name: date_format
+        params: { from: "Y-m-d H:i:s", to: "c" }
+
+  - source: time_close
+    target: end_time
+    direction: cc_to_crm
+    transformers:
+      - name: date_format
+        params: { from: "Y-m-d H:i:s", to: "c" }
+
+  - source: direction
+    target: direction
+    direction: cc_to_crm
+
+  - source: contact
+    target: contact_id
+    direction: cc_to_crm
+
+  # Multi-value: Daktela stores multiple tag values, CRM wants first only
+  - source: customFields.disposition
+    target: disposition
+    direction: cc_to_crm
+    multi_value:
+      strategy: first

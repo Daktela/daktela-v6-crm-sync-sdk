@@ -1,0 +1,358 @@
+# Field Mapping
+
+Field mappings define how data is translated between Daktela CC fields and CRM fields. Each entity type (contact, account, activity) has its own YAML mapping file.
+
+## YAML Schema
+
+```yaml
+entity: contact          # Entity type
+lookup_field: email      # Field used for upsert lookups
+mappings:
+  - source: title        # Daktela CC field name
+    target: full_name    # CRM field name
+    direction: crm_to_cc # Sync direction
+    transformers:        # Optional value transformers
+      - name: string_case
+        params: { case: title }
+    multi_value:         # Optional multi-value handling
+      strategy: join
+      separator: ", "
+    relation:            # Optional cross-entity reference
+      entity: account
+      resolve_from: id
+      resolve_to: name
+```
+
+## Direction
+
+Each field mapping specifies when it is active:
+
+- `crm_to_cc` — Field only syncs when pushing from CRM to Daktela
+- `cc_to_crm` — Field only syncs when pushing from Daktela to CRM
+- `bidirectional` — Field syncs in both directions
+
+## Dot Notation for Nested Fields
+
+Access nested fields (such as Daktela's `customFields`) using dots:
+
+```yaml
+- source: customFields.industry
+  target: industry
+  direction: crm_to_cc
+```
+
+This reads/writes `$entity['customFields']['industry']`. Intermediate arrays are created automatically when writing.
+
+You can also nest on the CRM side:
+
+```yaml
+- source: email
+  target: contact_info.email
+  direction: crm_to_cc
+```
+
+---
+
+## Multi-Value Custom Fields
+
+Daktela custom fields can store multiple values as arrays (e.g., tags, categories, interests). The `multi_value` config controls how array values are converted between systems.
+
+### Strategies
+
+| Strategy | Direction hint | Description |
+|----------|---------------|-------------|
+| `as_array` | Both | Keep value as an array, wrap scalars in `[]` |
+| `join` | Array → String | Join array elements with separator into a string |
+| `split` | String → Array | Split a string by separator into an array |
+| `first` | Array → Scalar | Take the first element of an array |
+| `last` | Array → Scalar | Take the last element of an array |
+
+### Examples
+
+**CRM stores tags as comma-separated string, Daktela stores as array:**
+
+```yaml
+# CRM "web,mobile,api" → Daktela ["web", "mobile", "api"]
+- source: customFields.tags
+  target: tags
+  direction: crm_to_cc
+  multi_value:
+    strategy: split
+    separator: ","
+```
+
+**Daktela stores interests as array, CRM wants a joined string:**
+
+```yaml
+# Daktela ["sports", "music"] → CRM "sports, music"
+- source: customFields.interests
+  target: interests
+  direction: cc_to_crm
+  multi_value:
+    strategy: join
+    separator: ", "
+```
+
+**Take only the first value from a multi-value field:**
+
+```yaml
+- source: customFields.disposition
+  target: primary_disposition
+  direction: cc_to_crm
+  multi_value:
+    strategy: first
+```
+
+**Pass arrays as-is (both systems support arrays):**
+
+```yaml
+- source: customFields.categories
+  target: categories
+  direction: crm_to_cc
+  multi_value:
+    strategy: as_array
+```
+
+### Processing Order
+
+For each field mapping, processing happens in this order:
+1. Read source value
+2. Apply transformer chain
+3. Resolve relations
+4. Apply multi-value strategy
+5. Write to target
+
+---
+
+## Relations (Cross-Entity References)
+
+When syncing contacts, you often need to resolve references to other entities. For example, a CRM contact has a `company_id` that references a CRM account, but Daktela's `account` field expects the Daktela account `name`.
+
+### Configuration
+
+```yaml
+- source: account          # Daktela CC field
+  target: company_id       # CRM field
+  direction: crm_to_cc
+  relation:
+    entity: account        # The related entity type
+    resolve_from: id       # Match CRM account by this field
+    resolve_to: name       # Use this Daktela field as the resolved value
+```
+
+### How It Works
+
+1. During `fullSync()`, accounts are synced first
+2. The engine builds a resolution map: `CRM account.id → Daktela account.name`
+3. When syncing contacts, the mapper sees `company_id = "crm-acc-123"` and resolves it to `account = "acme"` using the map
+4. If a value cannot be resolved, the original value is passed through unchanged
+
+### Using fullSync()
+
+The `SyncEngine::fullSync()` method handles the correct dependency order automatically:
+
+```php
+$results = $engine->fullSync();
+
+// $results['account'] — SyncResult for accounts
+// $results['contact'] — SyncResult for contacts (with resolved account refs)
+// $results['activity'] — SyncResult for activities
+```
+
+If you sync entities individually, you need to sync accounts before contacts:
+
+```php
+$engine->syncAccountsBatch(); // Must come first
+$engine->syncContactsBatch(); // Can now resolve account references
+```
+
+---
+
+## Built-in Transformers
+
+### `date_format`
+Converts between date formats using PHP's `DateTimeImmutable`.
+
+```yaml
+transformers:
+  - name: date_format
+    params:
+      from: "Y-m-d H:i:s"   # Source format
+      to: "c"                # Target format (ISO 8601)
+```
+
+If the source value doesn't match the `from` format, the transformer attempts generic parsing as a fallback.
+
+### `phone_normalize`
+Strips all non-digit/non-plus characters and optionally prepends `+` for E.164 format.
+
+```yaml
+transformers:
+  - name: phone_normalize
+    params: { format: e164 }
+```
+
+Example: `"(420) 123-456-789"` → `"+420123456789"`
+
+### `boolean`
+Casts to boolean. Recognizes these string values as truthy: `"true"`, `"yes"`, `"1"`, `"on"` (case-insensitive).
+
+```yaml
+transformers:
+  - name: boolean
+```
+
+### `string_case`
+Changes string case. Supported values for `case` param: `lower`, `upper`, `title`.
+
+```yaml
+transformers:
+  - name: string_case
+    params: { case: lower }
+```
+
+### `default_value`
+Provides a fallback when the source value is `null`.
+
+```yaml
+transformers:
+  - name: default_value
+    params: { value: "N/A" }
+```
+
+### `callback`
+Runs a registered PHP closure. Register callbacks on the `CallbackTransformer` before creating the engine:
+
+```php
+$registry = TransformerRegistry::withDefaults();
+$callback = $registry->get('callback');
+assert($callback instanceof CallbackTransformer);
+$callback->registerCallback('normalize_country', function (mixed $value): string {
+    return match (strtolower((string) $value)) {
+        'cz', 'czech republic', 'czechia' => 'CZ',
+        'sk', 'slovakia' => 'SK',
+        default => strtoupper((string) $value),
+    };
+});
+
+$engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger, $registry);
+```
+
+```yaml
+transformers:
+  - name: callback
+    params: { name: normalize_country }
+```
+
+### `prefix`
+Prepends a string to the value. Useful for creating unique IDs with CRM-specific prefixes.
+
+```yaml
+transformers:
+  - name: prefix
+    params: { value: "raynet_" }
+```
+
+Example: `"12345"` → `"raynet_12345"`
+
+Null and empty string values are returned unchanged.
+
+### `strip_prefix`
+Removes a prefix from the beginning of a string. The inverse of `prefix` — useful for extracting the original ID from a prefixed value.
+
+```yaml
+transformers:
+  - name: strip_prefix
+    params: { value: "raynet_" }
+```
+
+Example: `"raynet_12345"` → `"12345"`. If the value doesn't start with the prefix, it is returned unchanged.
+
+### `wrap_array`
+Wraps a scalar value in an array. Already-array values are returned as-is, null/empty values become `[]`. Useful when Daktela expects array custom fields but the CRM provides a single value.
+
+```yaml
+transformers:
+  - name: wrap_array
+```
+
+Example: `"john@example.com"` → `["john@example.com"]`
+
+### `url`
+Builds a URL from a template with a `{value}` placeholder. Useful for generating CRM detail links stored in Daktela's description field.
+
+```yaml
+transformers:
+  - name: url
+    params: { template: "https://crm.example.com/contact/{value}" }
+```
+
+Example with value `"42"`: → `"https://crm.example.com/contact/42"`
+
+The template supports `${ENV_VAR}` placeholders (resolved at config load time), so you can use instance-specific URLs:
+
+```yaml
+transformers:
+  - name: url
+    params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Person&ei={value}" }
+```
+
+## Transformer Chains
+
+Multiple transformers are applied in sequence:
+
+```yaml
+transformers:
+  - name: default_value
+    params: { value: "unknown" }
+  - name: string_case
+    params: { case: upper }
+```
+
+This first fills `null` values with `"unknown"`, then uppercases the result.
+
+## Environment Variables in Mapping Files
+
+Mapping YAML files support the same `${ENV_VAR}` syntax as `sync.yaml`. This is resolved at config load time by `EnvResolver`. Inline interpolation works too: `"prefix${VAR}suffix"`.
+
+This is particularly useful for URL templates that contain instance-specific values:
+
+```yaml
+transformers:
+  - name: url
+    params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Person&ei={value}" }
+```
+
+At load time, `${RAYNET_INSTANCE_NAME}` is replaced with the environment variable value, while `{value}` is a transformer placeholder replaced at runtime.
+
+## Custom Transformers
+
+Implement `ValueTransformerInterface` and register it:
+
+```php
+use Daktela\CrmSync\Mapping\Transformer\ValueTransformerInterface;
+
+class CurrencyTransformer implements ValueTransformerInterface
+{
+    public function getName(): string { return 'currency'; }
+
+    public function transform(mixed $value, array $params = []): mixed
+    {
+        $from = $params['from'] ?? 'CZK';
+        $to = $params['to'] ?? 'EUR';
+        // your conversion logic
+        return $convertedValue;
+    }
+}
+
+$registry = TransformerRegistry::withDefaults();
+$registry->register(new CurrencyTransformer());
+
+$engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger, $registry);
+```
+
+```yaml
+transformers:
+  - name: currency
+    params: { from: CZK, to: EUR }
+```

@@ -1,0 +1,23 @@
+daktela:
+  instance_url: "https://your-instance.daktela.com"
+  access_token: "${DAKTELA_ACCESS_TOKEN}"
+
+sync:
+  batch_size: 100
+  entities:
+    contact:
+      enabled: true
+      direction: crm_to_cc
+      mapping_file: "mappings/contacts.yaml"
+    account:
+      enabled: true
+      direction: crm_to_cc
+      mapping_file: "mappings/accounts.yaml"
+    activity:
+      enabled: true
+      direction: cc_to_crm
+      mapping_file: "mappings/activities.yaml"
+      activity_types: [call, email]
+
+webhook:
+  secret: "${WEBHOOK_SECRET}"

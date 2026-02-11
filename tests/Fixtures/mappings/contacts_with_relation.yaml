@@ -1,0 +1,28 @@
+entity: contact
+lookup_field: email
+mappings:
+  - source: title
+    target: full_name
+    direction: crm_to_cc
+  - source: email
+    target: email
+    direction: crm_to_cc
+  - source: number
+    target: phone
+    direction: crm_to_cc
+    transformers:
+      - name: phone_normalize
+        params: { format: e164 }
+  - source: account
+    target: company_id
+    direction: crm_to_cc
+    relation:
+      entity: account
+      resolve_from: id
+      resolve_to: name
+  - source: customFields.tags
+    target: tags
+    direction: crm_to_cc
+    multi_value:
+      strategy: split
+      separator: ","
