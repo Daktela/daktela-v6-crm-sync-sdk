@@ -391,41 +391,4 @@ final class BatchSync
         $this->stateStore->setLastSyncTime($entityType, $syncStartTime);
     }
 
-    /**
-     * After syncing an entity, add its CRM ID → CC lookup value to the relation map
-     * so subsequent entity syncs can resolve references.
-     */
-    private function addToRelationMap(
-        string $entityType,
-        EntityInterface $entity,
-        MappingCollection $mapping,
-    ): void {
-        // Find all relation configs in other entity mappings that reference this entity type
-        $contactMapping = $this->config->getMapping('contact');
-        if ($contactMapping === null) {
-            return;
-        }
-
-        foreach ($contactMapping->mappings as $fm) {
-            if ($fm->relation === null || $fm->relation->entity !== $entityType) {
-                continue;
-            }
-
-            $fromValue = $entity->get($fm->relation->resolveFrom);
-
-            // Find the CRM-side field that maps to resolve_to
-            $toValue = null;
-            foreach ($mapping->mappings as $entityFm) {
-                if ($entityFm->source === $fm->relation->resolveTo) {
-                    $toValue = $entity->get($entityFm->target);
-                    break;
-                }
-            }
-
-            if ($fromValue !== null && $toValue !== null) {
-                $this->relationMaps[$entityType] ??= [];
-                $this->relationMaps[$entityType][(string) $fromValue] = (string) $toValue;
-            }
-        }
-    }
 }

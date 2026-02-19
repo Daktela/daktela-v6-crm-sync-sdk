@@ -1,0 +1,37 @@
+# Daktela CRM Sync — Raynet Configuration
+#
+# All credential fields use ${ENV_VAR} placeholders by default.
+# Set the corresponding environment variables before running,
+# or replace placeholders with literal values for local development.
+
+daktela:
+  instance_url: "${DAKTELA_INSTANCE_URL}"
+  access_token: "${DAKTELA_ACCESS_TOKEN}"
+
+raynet:
+  api_url: "https://app.raynet.cz/api/v2/"
+  email: "${RAYNET_EMAIL}"
+  api_key: "${RAYNET_API_KEY}"
+  instance_name: "${RAYNET_INSTANCE_NAME}"
+  person_type: "person"             # "person" or "contact-person"
+  owner_id: 0                       # Raynet user ID for activity ownership
+
+sync:
+  batch_size: 100
+  entities:
+    contact:
+      enabled: true
+      direction: crm_to_cc
+      mapping_file: "mappings/contacts.yaml"
+    account:
+      enabled: true
+      direction: crm_to_cc
+      mapping_file: "mappings/accounts.yaml"
+    activity:
+      enabled: true
+      direction: cc_to_crm
+      mapping_file: "mappings/activities.yaml"
+      activity_types: [call, email, web, sms, fbm, wap, vbr]
+
+webhook:
+  secret: "${WEBHOOK_SECRET}"

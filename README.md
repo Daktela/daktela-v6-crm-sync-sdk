@@ -1,6 +1,6 @@
-# Daktela CRM Sync SDK
+# Daktela CRM Sync
 
-A universal sync layer between **Daktela Contact Centre V6** and any CRM system. This SDK provides adapter interfaces for both sides, ships a concrete Daktela adapter, and lets you implement only the CRM side.
+A universal sync layer between **Daktela Contact Centre V6** and any CRM system. Ships a concrete Daktela adapter, ready-to-use CRM integrations, and lets you add more under `src/Crm/`.
 
 ## Architecture
 
@@ -13,13 +13,20 @@ A universal sync layer between **Daktela Contact Centre V6** and any CRM system.
       │              YAML Configs          Official PHP
       │            (field mappings)        Connector v2.4
       │
-  You implement this
+  CRM adapters live
+  in src/Crm/<Name>/
 ```
 
 **Sync directions:**
 - **Contacts**: CRM → Daktela (CRM is source-of-truth)
 - **Accounts**: CRM → Daktela (CRM is source-of-truth)
 - **Activities**: Daktela → CRM (Daktela is source-of-truth)
+
+## CRM Integrations
+
+| CRM | Namespace | Docs |
+|-----|-----------|------|
+| [Raynet CRM](https://raynet.cz) | `Daktela\CrmSync\Crm\Raynet` | [README](src/Crm/Raynet/README.md) |
 
 ## Requirements
 
@@ -41,50 +48,20 @@ composer require daktela/crm-sync
 ```php
 use Daktela\CrmSync\Adapter\Daktela\DaktelaAdapter;
 use Daktela\CrmSync\Config\YamlConfigLoader;
-use Daktela\CrmSync\State\FileSyncStateStore;
 use Daktela\CrmSync\Sync\SyncEngine;
 use Psr\Log\NullLogger;
 
 $config = (new YamlConfigLoader())->load('config/sync.yaml');
 $logger = new NullLogger();
 
-$ccAdapter = new DaktelaAdapter(
-    $config->instanceUrl,
-    $config->accessToken,
-    $logger,
-);
-
+$ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $logger);
 $crmAdapter = new YourCrmAdapter(/* ... */);
 
-// Optional: enable incremental sync by providing a state store
-$stateStore = new FileSyncStateStore('/var/data/myapp/sync-state.json');
-
-$engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger, stateStore: $stateStore);
-
-// Batch sync contacts from CRM to Daktela
+$engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger);
 $result = $engine->syncContactsBatch();
-
-echo sprintf(
-    "Synced %d contacts: %d created, %d updated, %d failed\n",
-    $result->getTotalCount(),
-    $result->getCreatedCount(),
-    $result->getUpdatedCount(),
-    $result->getFailedCount(),
-);
 ```
 
-## Examples
-
-Ready-to-use examples in the [`examples/`](examples/) directory:
-
-| File | Description |
-|------|-------------|
-| [`bootstrap.php`](examples/bootstrap.php) | Shared setup — config, adapters, engine |
-| [`full-sync.php`](examples/full-sync.php) | Full sync of all entities |
-| [`single-entity-sync.php`](examples/single-entity-sync.php) | Sync contacts, accounts, or activities individually |
-| [`single-record-sync.php`](examples/single-record-sync.php) | Sync a single record by ID |
-| [`incremental-sync.php`](examples/incremental-sync.php) | Incremental sync with state tracking |
-| [`webhook-daktela.php`](examples/webhook-daktela.php) | Daktela webhook endpoint |
+For Raynet CRM specifically, see the [Raynet README](src/Crm/Raynet/README.md) and [`examples/raynet/`](examples/raynet/).
 
 ## Documentation
 
@@ -102,6 +79,7 @@ Ready-to-use examples in the [`examples/`](examples/) directory:
 
 ```bash
 docker compose build
+docker compose run --rm php composer install
 docker compose run --rm php vendor/bin/phpunit
 docker compose run --rm php vendor/bin/phpstan analyse
 ```
