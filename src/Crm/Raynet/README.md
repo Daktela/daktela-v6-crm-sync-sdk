@@ -49,27 +49,27 @@ For full field mapping syntax (directions, dot notation, multi-value strategies,
 
 ### Contacts
 
-The adapter flattens Raynet's nested person response:
+The adapter passes through raw Raynet API fields. Use dot notation in mappings to access nested values. Common fields:
 
-| Adapter field  | Raynet API path                    | Description              |
-|----------------|------------------------------------|--------------------------|
-| `firstName`    | `firstName`                        | First name               |
-| `lastName`     | `lastName`                         | Last name                |
-| `fullName`     | (computed)                         | First + Last joined      |
-| `email`        | `primaryAddress.contactInfo.email` | Primary email            |
-| `tel1`         | `primaryAddress.contactInfo.tel1`  | Primary phone            |
-| `company_id`   | `company.id`                       | Related company ID       |
-| `id`           | `id`                               | Raynet person ID         |
+| CRM field path                     | Description                        |
+|------------------------------------|------------------------------------|
+| `firstName`                        | First name                         |
+| `lastName`                         | Last name                          |
+| `fullName`                         | Full name (computed by Raynet API) |
+| `contactInfo.email`                | Primary email                      |
+| `contactInfo.tel1`                 | Primary phone                      |
+| `primaryRelationship.company.id`   | Related company ID                 |
+| `id`                               | Raynet person ID                   |
 
 ### Accounts
 
-| Adapter field  | Raynet API path                    | Description              |
-|----------------|------------------------------------|--------------------------|
-| `name`         | `name`                             | Company name             |
-| `regNumber`    | `regNumber`                        | Registration number      |
-| `email`        | `primaryAddress.contactInfo.email` | Company email            |
-| `tel1`         | `primaryAddress.contactInfo.tel1`  | Company phone            |
-| `id`           | `id`                               | Raynet company ID        |
+| CRM field path                         | Description         |
+|----------------------------------------|---------------------|
+| `name`                                 | Company name        |
+| `regNumber`                            | Registration number |
+| `primaryAddress.contactInfo.email`     | Company email       |
+| `primaryAddress.contactInfo.tel1`      | Company phone       |
+| `id`                                   | Raynet company ID   |
 
 ### Activities
 

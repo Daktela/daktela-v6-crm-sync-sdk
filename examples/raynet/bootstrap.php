@@ -3,8 +3,8 @@
 /**
  * Shared bootstrap for Raynet example scripts.
  *
- * Creates both adapters (Daktela + Raynet), verifies connections, registers
- * Raynet-specific transformers, and wires the SyncEngine.
+ * Creates both adapters (Daktela + Raynet), verifies connections,
+ * and wires the SyncEngine.
  *
  * Everything is configured through a single sync.yaml file. No .env file needed.
  * Values can be literal or use ${ENV_VAR} placeholders for production deployments.
@@ -34,8 +34,6 @@ use Daktela\CrmSync\Config\YamlConfigLoader;
 use Daktela\CrmSync\Crm\Raynet\RaynetClient;
 use Daktela\CrmSync\Crm\Raynet\RaynetConfigLoader;
 use Daktela\CrmSync\Crm\Raynet\RaynetCrmAdapter;
-use Daktela\CrmSync\Crm\Raynet\Transformer\NameJoinTransformer;
-use Daktela\CrmSync\Crm\Raynet\Transformer\RaynetDateTransformer;
 use Daktela\CrmSync\Mapping\Transformer\TransformerRegistry;
 use Daktela\CrmSync\Sync\SyncEngine;
 use Psr\Log\AbstractLogger;
@@ -80,10 +78,8 @@ if (!$ccAdapter->ping()) {
 }
 $logger->info('Daktela connection OK');
 
-// --- Register Raynet-specific transformers alongside SDK defaults ---
+// --- Transformer registry (all built-in transformers including join, date_format, etc.) ---
 $transformerRegistry = TransformerRegistry::withDefaults();
-$transformerRegistry->register(new RaynetDateTransformer());
-$transformerRegistry->register(new NameJoinTransformer());
 
 // --- Create the sync engine ---
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $syncConfig, $logger, $transformerRegistry);

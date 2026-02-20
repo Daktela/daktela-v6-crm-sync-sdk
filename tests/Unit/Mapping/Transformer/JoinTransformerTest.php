@@ -2,29 +2,29 @@
 
 declare(strict_types=1);
 
-namespace Daktela\CrmSync\Tests\Unit\Crm\Raynet\Transformer;
+namespace Daktela\CrmSync\Tests\Unit\Mapping\Transformer;
 
-use Daktela\CrmSync\Crm\Raynet\Transformer\NameJoinTransformer;
+use Daktela\CrmSync\Mapping\Transformer\JoinTransformer;
 use PHPUnit\Framework\Attributes\Test;
 use PHPUnit\Framework\TestCase;
 
-final class NameJoinTransformerTest extends TestCase
+final class JoinTransformerTest extends TestCase
 {
-    private NameJoinTransformer $transformer;
+    private JoinTransformer $transformer;
 
     protected function setUp(): void
     {
-        $this->transformer = new NameJoinTransformer();
+        $this->transformer = new JoinTransformer();
     }
 
     #[Test]
     public function itHasCorrectName(): void
     {
-        self::assertSame('name_join', $this->transformer->getName());
+        self::assertSame('join', $this->transformer->getName());
     }
 
     #[Test]
-    public function itJoinsFirstAndLastName(): void
+    public function itJoinsArrayValues(): void
     {
         $result = $this->transformer->transform(['John', 'Doe']);
 
@@ -32,7 +32,7 @@ final class NameJoinTransformerTest extends TestCase
     }
 
     #[Test]
-    public function itHandlesPartialFirstNameOnly(): void
+    public function itFiltersEmptyStrings(): void
     {
         $result = $this->transformer->transform(['John', '']);
 
@@ -40,15 +40,7 @@ final class NameJoinTransformerTest extends TestCase
     }
 
     #[Test]
-    public function itHandlesPartialLastNameOnly(): void
-    {
-        $result = $this->transformer->transform(['', 'Doe']);
-
-        self::assertSame('Doe', $result);
-    }
-
-    #[Test]
-    public function itHandlesNullValuesInArray(): void
+    public function itFiltersNullValues(): void
     {
         $result = $this->transformer->transform([null, 'Doe']);
 

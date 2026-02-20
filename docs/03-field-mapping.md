@@ -111,8 +111,10 @@ For each field mapping, processing happens in this order:
 1. Read source value
 2. Apply transformer chain
 3. Resolve relations
-4. Apply multi-value strategy
-5. Write to target
+4. Apply multi-value strategy (non-append fields only)
+5. Write to target (append or set)
+
+For `append` fields, the `multi_value` strategy is deferred — it runs once after all values for that target field are accumulated. This allows `multi_value: join` to collapse the final array into a string.
 
 ---
 
@@ -287,6 +289,37 @@ transformers:
   - name: url
     params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Person&ei={value}" }
 ```
+
+### `join`
+Joins an array value into a string. Filters out null and empty values before joining.
+
+```yaml
+transformers:
+  - name: join
+    params: { separator: " " }   # default separator is a space
+```
+
+Example: `["John", "Doe"]` → `"John Doe"`. Strings are passed through unchanged.
+
+## Combining Multiple Fields with Append
+
+Use `append: true` to collect multiple source fields into an array, then `multi_value: join` to collapse it into a string. The `multi_value` strategy on append fields runs after all values are accumulated.
+
+```yaml
+# Map firstName + lastName → title (e.g. "Kristýna Kovandová")
+- crm_field: firstName
+  cc_field: title
+  append: true
+
+- crm_field: lastName
+  cc_field: title
+  append: true
+  multi_value:
+    strategy: join
+    separator: " "
+```
+
+Without `multi_value`, the result would be an array `["Kristýna", "Kovandová"]`. With `multi_value: join`, it collapses to `"Kristýna Kovandová"`.
 
 ## Transformer Chains
 

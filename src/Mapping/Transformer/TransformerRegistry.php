@@ -39,6 +39,7 @@ final class TransformerRegistry
         $registry->register(new StripPrefixTransformer());
         $registry->register(new WrapArrayTransformer());
         $registry->register(new UrlTransformer());
+        $registry->register(new JoinTransformer());
 
         return $registry;
     }

@@ -26,8 +26,6 @@ use Daktela\CrmSync\Config\YamlConfigLoader;
 use Daktela\CrmSync\Crm\Raynet\RaynetClient;
 use Daktela\CrmSync\Crm\Raynet\RaynetConfigLoader;
 use Daktela\CrmSync\Crm\Raynet\RaynetCrmAdapter;
-use Daktela\CrmSync\Crm\Raynet\Transformer\NameJoinTransformer;
-use Daktela\CrmSync\Crm\Raynet\Transformer\RaynetDateTransformer;
 use Daktela\CrmSync\Mapping\Transformer\TransformerRegistry;
 use Daktela\CrmSync\State\FileSyncStateStore;
 use Daktela\CrmSync\Sync\SyncEngine;
@@ -83,10 +81,8 @@ if (!$ccAdapter->ping()) {
 }
 $logger->info('Daktela connection OK');
 
-// --- Register Raynet-specific transformers ---
+// --- Transformer registry ---
 $transformerRegistry = TransformerRegistry::withDefaults();
-$transformerRegistry->register(new RaynetDateTransformer());
-$transformerRegistry->register(new NameJoinTransformer());
 
 // --- Create engine with state store for incremental sync ---
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $syncConfig, $logger, $transformerRegistry, $stateStore);

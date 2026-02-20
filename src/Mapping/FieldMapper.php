@@ -31,6 +31,10 @@ final class FieldMapper
     ): array {
         $result = [];
 
+        // multi_value strategies deferred until after all append values are collected
+        /** @var array<string, MultiValueConfig> */
+        $deferredMultiValue = [];
+
         foreach ($collection->mappings as $mapping) {
             // CrmToCc: read from CRM field, write to CC field
             // CcToCrm: read from CC field, write to CRM field
@@ -50,15 +54,27 @@ final class FieldMapper
                 $value = $this->resolveRelation($value, $mapping->relation, $relationMaps);
             }
 
-            // Apply multi-value strategy if configured
-            if ($mapping->multiValue !== null) {
-                $value = $mapping->multiValue->apply($value);
-            }
-
             if ($mapping->append) {
+                // For append fields, defer multi_value to post-processing so it
+                // runs on the final accumulated array, not on each individual value.
+                if ($mapping->multiValue !== null) {
+                    $deferredMultiValue[$writeField] = $mapping->multiValue;
+                }
                 $this->appendNestedValue($result, $writeField, $value);
             } else {
+                // Apply multi-value strategy if configured
+                if ($mapping->multiValue !== null) {
+                    $value = $mapping->multiValue->apply($value);
+                }
                 $this->setNestedValue($result, $writeField, $value);
+            }
+        }
+
+        // Collapse accumulated append fields (e.g. join ["John", "Doe"] → "John Doe")
+        foreach ($deferredMultiValue as $field => $multiValue) {
+            $accumulated = $this->getNestedValue($result, $field);
+            if ($accumulated !== null) {
+                $this->setNestedValue($result, $field, $multiValue->apply($accumulated));
             }
         }
 

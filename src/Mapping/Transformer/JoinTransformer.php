@@ -2,15 +2,13 @@
 
 declare(strict_types=1);
 
-namespace Daktela\CrmSync\Crm\Raynet\Transformer;
+namespace Daktela\CrmSync\Mapping\Transformer;
 
-use Daktela\CrmSync\Mapping\Transformer\ValueTransformerInterface;
-
-final class NameJoinTransformer implements ValueTransformerInterface
+final class JoinTransformer implements ValueTransformerInterface
 {
     public function getName(): string
     {
-        return 'name_join';
+        return 'join';
     }
 
     /** @param array<string, mixed> $params */

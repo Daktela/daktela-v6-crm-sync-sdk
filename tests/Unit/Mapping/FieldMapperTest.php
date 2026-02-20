@@ -302,4 +302,47 @@ final class FieldMapperTest extends TestCase
 
         self::assertSame(['vip'], $result['customFields']['tags']);
     }
+
+    public function testAppendWithMultiValueJoinCollapsesAccumulatedValues(): void
+    {
+        $collection = new MappingCollection('contact', 'email', [
+            new FieldMapping('title', 'firstName', append: true),
+            new FieldMapping(
+                ccField: 'title',
+                crmField: 'lastName',
+                multiValue: new MultiValueConfig(MultiValueStrategy::Join, ' '),
+                append: true,
+            ),
+        ]);
+
+        $entity = Contact::fromArray([
+            'firstName' => 'Kristýna',
+            'lastName' => 'Kovandová',
+        ]);
+
+        $result = $this->mapper->map($entity, $collection, SyncDirection::CrmToCc);
+
+        self::assertSame('Kristýna Kovandová', $result['title']);
+    }
+
+    public function testAppendWithMultiValueJoinFiltersNullValues(): void
+    {
+        $collection = new MappingCollection('contact', 'email', [
+            new FieldMapping('title', 'firstName', append: true),
+            new FieldMapping(
+                ccField: 'title',
+                crmField: 'lastName',
+                multiValue: new MultiValueConfig(MultiValueStrategy::Join, ' '),
+                append: true,
+            ),
+        ]);
+
+        $entity = Contact::fromArray([
+            'lastName' => 'Kovandová',
+        ]);
+
+        $result = $this->mapper->map($entity, $collection, SyncDirection::CrmToCc);
+
+        self::assertSame('Kovandová', $result['title']);
+    }
 }

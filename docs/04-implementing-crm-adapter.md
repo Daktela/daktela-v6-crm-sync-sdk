@@ -10,12 +10,14 @@ interface CrmAdapterInterface
     // Contacts (read-only — CRM is source-of-truth)
     public function findContact(string $id): ?Contact;
     public function findContactByLookup(string $field, string $value): ?Contact;
-    public function iterateContacts(): \Generator;
+    public function iterateContacts(?\DateTimeImmutable $since = null): \Generator;
+    public function searchContacts(string $query): \Generator;
 
     // Accounts (read-only — CRM is source-of-truth)
     public function findAccount(string $id): ?Account;
     public function findAccountByLookup(string $field, string $value): ?Account;
-    public function iterateAccounts(): \Generator;
+    public function iterateAccounts(?\DateTimeImmutable $since = null): \Generator;
+    public function searchAccounts(string $query): \Generator;
 
     // Activities (writable — CC is source-of-truth, CRM receives data)
     public function findActivity(string $id): ?Activity;
@@ -36,10 +38,12 @@ interface CrmAdapterInterface
 |--------|---------|-------------|
 | `findContact($id)` | Find by CRM ID | Webhook sync |
 | `findContactByLookup($field, $value)` | Find by field value | Lookup operations |
-| `iterateContacts()` | Iterate all contacts | Batch sync |
+| `iterateContacts($since)` | Iterate contacts (all or modified since) | Batch sync |
+| `searchContacts($query)` | Fulltext search | Utility / UI |
 | `findAccount($id)` | Find by CRM ID | Webhook sync |
 | `findAccountByLookup($field, $value)` | Find by field value | Lookup operations |
-| `iterateAccounts()` | Iterate all accounts | Batch sync, relation map building |
+| `iterateAccounts($since)` | Iterate accounts (all or modified since) | Batch sync, relation map building |
+| `searchAccounts($query)` | Fulltext search | Utility / UI |
 
 ### Write Methods (Activities)
 
@@ -86,11 +90,21 @@ final class SalesforceCrmAdapter implements CrmAdapterInterface
         return $record ? $this->mapContact($record) : null;
     }
 
-    public function iterateContacts(): \Generator
+    public function iterateContacts(?\DateTimeImmutable $since = null): \Generator
     {
         // Use generators for memory efficiency with large datasets
         $query = 'SELECT Id, Name, Email, Phone, AccountId FROM Contact';
+        if ($since !== null) {
+            $query .= " WHERE LastModifiedDate >= {$since->format('c')}";
+        }
         foreach ($this->client->queryAll($query) as $record) {
+            yield $this->mapContact($record);
+        }
+    }
+
+    public function searchContacts(string $query): \Generator
+    {
+        foreach ($this->client->search('Contact', $query) as $record) {
             yield $this->mapContact($record);
         }
     }
@@ -109,9 +123,20 @@ final class SalesforceCrmAdapter implements CrmAdapterInterface
         return $record ? $this->mapAccount($record) : null;
     }
 
-    public function iterateAccounts(): \Generator
+    public function iterateAccounts(?\DateTimeImmutable $since = null): \Generator
     {
-        foreach ($this->client->queryAll('SELECT Id, Name, Industry FROM Account') as $record) {
+        $query = 'SELECT Id, Name, Industry FROM Account';
+        if ($since !== null) {
+            $query .= " WHERE LastModifiedDate >= {$since->format('c')}";
+        }
+        foreach ($this->client->queryAll($query) as $record) {
+            yield $this->mapAccount($record);
+        }
+    }
+
+    public function searchAccounts(string $query): \Generator
+    {
+        foreach ($this->client->search('Account', $query) as $record) {
             yield $this->mapAccount($record);
         }
     }
@@ -203,6 +228,7 @@ final class SalesforceCrmAdapter implements CrmAdapterInterface
 1. **Contacts and Accounts are read-only** — The CRM is the source of truth
 2. **Activities are writable** — Daktela pushes activity data to the CRM
 3. **Use generators for iteration** — `iterateContacts()` and `iterateAccounts()` should use `yield` for memory efficiency with large datasets
+3. **Support incremental sync** — When `$since` is provided, filter to only return records modified after that timestamp. When `null`, return all records (full sync).
 4. **Entity IDs are strings** — Map your CRM's native ID type to string
 5. **Throw `AdapterException`** for failures — The sync engine catches these per-record
 6. **Include all fields the mapping needs** — Check your YAML mapping to know which CRM fields to include
