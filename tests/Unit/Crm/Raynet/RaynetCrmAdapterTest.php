@@ -60,10 +60,8 @@ final class RaynetCrmAdapterTest extends TestCase
         self::assertSame('42', $contact->getId());
         self::assertSame('John', $contact->get('firstName'));
         self::assertSame('Doe', $contact->get('lastName'));
-        self::assertSame('John Doe', $contact->get('fullName'));
-        self::assertSame('john@example.com', $contact->get('email'));
-        self::assertSame('+420123456789', $contact->get('tel1'));
-        self::assertSame('10', $contact->get('company_id'));
+        self::assertSame(['email' => 'john@example.com', 'tel1' => '+420123456789'], $contact->get('contactInfo'));
+        self::assertSame(['company' => ['id' => 10]], $contact->get('primaryRelationship'));
         self::assertSame(['cf_1' => 'custom-value'], $contact->get('customFields'));
     }
 
@@ -106,12 +104,13 @@ final class RaynetCrmAdapterTest extends TestCase
         self::assertSame('10', $account->getId());
         self::assertSame('Acme Corp', $account->get('name'));
         self::assertSame('12345678', $account->get('regNumber'));
-        self::assertSame('info@acme.cz', $account->get('email'));
-        self::assertSame('+420111222333', $account->get('tel1'));
-        self::assertSame('Main Street 1', $account->get('street'));
-        self::assertSame('Prague', $account->get('city'));
-        self::assertSame('11000', $account->get('zipCode'));
-        self::assertSame('CZ', $account->get('country'));
+        $primaryAddress = $account->get('primaryAddress');
+        self::assertSame('info@acme.cz', $primaryAddress['contactInfo']['email']);
+        self::assertSame('+420111222333', $primaryAddress['contactInfo']['tel1']);
+        self::assertSame('Main Street 1', $primaryAddress['address']['street']);
+        self::assertSame('Prague', $primaryAddress['address']['city']);
+        self::assertSame('11000', $primaryAddress['address']['zipCode']);
+        self::assertSame('CZ', $primaryAddress['address']['country']);
     }
 
     #[Test]
@@ -127,8 +126,10 @@ final class RaynetCrmAdapterTest extends TestCase
         $contacts = iterator_to_array($this->adapter->iterateContacts());
 
         self::assertCount(2, $contacts);
-        self::assertSame('Alice A', $contacts[0]->get('fullName'));
-        self::assertSame('Bob B', $contacts[1]->get('fullName'));
+        self::assertSame('Alice', $contacts[0]->get('firstName'));
+        self::assertSame('A', $contacts[0]->get('lastName'));
+        self::assertSame('Bob', $contacts[1]->get('firstName'));
+        self::assertSame('B', $contacts[1]->get('lastName'));
     }
 
     #[Test]

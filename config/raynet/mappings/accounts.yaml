@@ -30,34 +30,56 @@ mappings:
     target: taxPayer
     direction: crm_to_cc
 
-  # Company contact info
+  # Primary email
   - source: customFields.email
-    target: email
+    target: primaryAddress.contactInfo.email
     direction: crm_to_cc
+    transformers:
+      - name: wrap_array
 
-  - source: customFields.tel1
-    target: tel1
+  # Secondary email (appended to same Daktela field)
+  - source: customFields.email
+    target: primaryAddress.contactInfo.email2
     direction: crm_to_cc
+    append: true
+    transformers:
+      - name: wrap_array
 
+  # Primary phone
+  - source: customFields.number
+    target: primaryAddress.contactInfo.tel1
+    direction: crm_to_cc
+    transformers:
+      - name: wrap_array
+
+  # Secondary phone (appended to same Daktela field)
+  - source: customFields.number
+    target: primaryAddress.contactInfo.tel2
+    direction: crm_to_cc
+    append: true
+    transformers:
+      - name: wrap_array
+
+  # Website
   - source: customFields.www
     target: primaryAddress.contactInfo.www
     direction: crm_to_cc
 
   # Primary address
   - source: customFields.street
-    target: street
+    target: primaryAddress.address.street
     direction: crm_to_cc
 
   - source: customFields.city
-    target: city
+    target: primaryAddress.address.city
     direction: crm_to_cc
 
   - source: customFields.zipCode
-    target: zipCode
+    target: primaryAddress.address.zipCode
     direction: crm_to_cc
 
   - source: customFields.country
-    target: country
+    target: primaryAddress.address.country
     direction: crm_to_cc
 
   # Client rating (A/B/C)

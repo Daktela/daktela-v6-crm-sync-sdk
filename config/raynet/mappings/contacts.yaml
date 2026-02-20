@@ -2,7 +2,7 @@ entity: contact
 lookup_field: name
 
 mappings:
-  # Daktela display name <- Raynet person fullName
+  # Daktela display name <- Raynet fullName (computed by Raynet API)
   - source: title
     target: fullName
     direction: crm_to_cc
@@ -38,14 +38,14 @@ mappings:
     target: salutation
     direction: crm_to_cc
 
-  # Primary email (wrapped in array for Daktela)
+  # Primary email
   - source: customFields.email
-    target: email
+    target: contactInfo.email
     direction: crm_to_cc
     transformers:
       - name: wrap_array
 
-  # Secondary email (appended to same Daktela email array)
+  # Secondary email (appended to same Daktela field)
   - source: customFields.email
     target: contactInfo.email2
     direction: crm_to_cc
@@ -53,14 +53,14 @@ mappings:
     transformers:
       - name: wrap_array
 
-  # Primary phone (wrapped in array for Daktela)
+  # Primary phone
   - source: customFields.number
-    target: tel1
+    target: contactInfo.tel1
     direction: crm_to_cc
     transformers:
       - name: wrap_array
 
-  # Secondary phone (appended to same Daktela phone array)
+  # Secondary phone (appended to same Daktela field)
   - source: customFields.number
     target: contactInfo.tel2
     direction: crm_to_cc
@@ -122,9 +122,9 @@ mappings:
       - name: url
         params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Person&ei={value}" }
 
-  # Account relation: resolve Raynet company_id -> Daktela account name
+  # Account relation: resolve Raynet company ID -> Daktela account name
   - source: account
-    target: company_id
+    target: primaryRelationship.company.id
     direction: crm_to_cc
     relation:
       entity: account

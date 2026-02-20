@@ -248,23 +248,8 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     {
         $id = isset($record['id']) ? (string) $record['id'] : null;
 
-        // Pass through all raw Raynet fields
         $data = $record;
         unset($data['id']);
-
-        // Add convenience aliases for commonly used nested fields
-        $firstName = (string) ($record['firstName'] ?? '');
-        $lastName = (string) ($record['lastName'] ?? '');
-        $data['fullName'] = trim($firstName . ' ' . $lastName);
-
-        $contactInfo = $record['contactInfo'] ?? [];
-        $data['email'] = (string) ($contactInfo['email'] ?? '');
-        $data['tel1'] = (string) ($contactInfo['tel1'] ?? '');
-
-        $companyId = $record['primaryRelationship']['company']['id'] ?? null;
-        if ($companyId !== null) {
-            $data['company_id'] = (string) $companyId;
-        }
 
         return new Contact($id, $data);
     }
@@ -276,20 +261,8 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     {
         $id = isset($record['id']) ? (string) $record['id'] : null;
 
-        // Pass through all raw Raynet fields
         $data = $record;
         unset($data['id']);
-
-        // Add convenience aliases for commonly used nested fields
-        $contactInfo = $record['primaryAddress']['contactInfo'] ?? [];
-        $address = $record['primaryAddress']['address'] ?? [];
-
-        $data['email'] = (string) ($contactInfo['email'] ?? '');
-        $data['tel1'] = (string) ($contactInfo['tel1'] ?? '');
-        $data['street'] = (string) ($address['street'] ?? '');
-        $data['city'] = (string) ($address['city'] ?? '');
-        $data['zipCode'] = (string) ($address['zipCode'] ?? '');
-        $data['country'] = (string) ($address['country'] ?? '');
 
         return new Account($id, $data);
     }
