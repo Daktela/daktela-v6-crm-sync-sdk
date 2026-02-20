@@ -93,9 +93,8 @@ The SDK resolves this automatically when you:
 
 ```yaml
 # contacts.yaml
-- source: account          # Daktela field
-  target: company_id       # CRM field
-  direction: crm_to_cc
+- cc_field: account        # Daktela field
+  crm_field: company_id    # CRM field
   relation:
     entity: account        # Related entity
     resolve_from: id       # CRM account field to match

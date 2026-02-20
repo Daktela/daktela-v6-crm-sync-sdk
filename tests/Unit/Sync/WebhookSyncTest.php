@@ -127,13 +127,13 @@ final class WebhookSyncTest extends TestCase
     private function createConfig(): SyncConfiguration
     {
         $contactMapping = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
+            new FieldMapping('email', 'email'),
         ]);
 
         $activityMapping = new MappingCollection('activity', 'name', [
-            new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-            new FieldMapping('title', 'subject', SyncDirection::CcToCrm),
+            new FieldMapping('name', 'external_id'),
+            new FieldMapping('title', 'subject'),
         ]);
 
         return new SyncConfiguration(

@@ -3,153 +3,125 @@ lookup_field: name
 
 mappings:
   # Daktela display name <- Raynet company name
-  - source: title
-    target: name
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: name
 
   # Daktela unique name <- prefix + Raynet company ID
-  - source: name
-    target: id
-    direction: crm_to_cc
+  - cc_field: name
+    crm_field: id
     transformers:
       - name: prefix
         params: { value: "raynet_" }
 
   # Registration number (ICO)
-  - source: customFields.regNumber
-    target: regNumber
-    direction: crm_to_cc
+  - cc_field: customFields.regNumber
+    crm_field: regNumber
 
   # Tax number (DIC)
-  - source: customFields.taxNumber
-    target: taxNumber
-    direction: crm_to_cc
+  - cc_field: customFields.taxNumber
+    crm_field: taxNumber
 
   # VAT payer status (YES/NO)
-  - source: customFields.taxPayer
-    target: taxPayer
-    direction: crm_to_cc
+  - cc_field: customFields.taxPayer
+    crm_field: taxPayer
 
   # Primary email
-  - source: customFields.email
-    target: primaryAddress.contactInfo.email
-    direction: crm_to_cc
+  - cc_field: customFields.email
+    crm_field: primaryAddress.contactInfo.email
     transformers:
       - name: wrap_array
 
   # Secondary email (appended to same Daktela field)
-  - source: customFields.email
-    target: primaryAddress.contactInfo.email2
-    direction: crm_to_cc
+  - cc_field: customFields.email
+    crm_field: primaryAddress.contactInfo.email2
     append: true
     transformers:
       - name: wrap_array
 
   # Primary phone
-  - source: customFields.number
-    target: primaryAddress.contactInfo.tel1
-    direction: crm_to_cc
+  - cc_field: customFields.number
+    crm_field: primaryAddress.contactInfo.tel1
     transformers:
       - name: wrap_array
 
   # Secondary phone (appended to same Daktela field)
-  - source: customFields.number
-    target: primaryAddress.contactInfo.tel2
-    direction: crm_to_cc
+  - cc_field: customFields.number
+    crm_field: primaryAddress.contactInfo.tel2
     append: true
     transformers:
       - name: wrap_array
 
   # Website
-  - source: customFields.www
-    target: primaryAddress.contactInfo.www
-    direction: crm_to_cc
+  - cc_field: customFields.www
+    crm_field: primaryAddress.contactInfo.www
 
   # Primary address
-  - source: customFields.street
-    target: primaryAddress.address.street
-    direction: crm_to_cc
+  - cc_field: customFields.street
+    crm_field: primaryAddress.address.street
 
-  - source: customFields.city
-    target: primaryAddress.address.city
-    direction: crm_to_cc
+  - cc_field: customFields.city
+    crm_field: primaryAddress.address.city
 
-  - source: customFields.zipCode
-    target: primaryAddress.address.zipCode
-    direction: crm_to_cc
+  - cc_field: customFields.zipCode
+    crm_field: primaryAddress.address.zipCode
 
-  - source: customFields.country
-    target: primaryAddress.address.country
-    direction: crm_to_cc
+  - cc_field: customFields.country
+    crm_field: primaryAddress.address.country
 
   # Client rating (A/B/C)
-  - source: customFields.rating
-    target: rating
-    direction: crm_to_cc
+  - cc_field: customFields.rating
+    crm_field: rating
 
   # Client state (A_POTENTIAL, B_ACTUAL, C_DEFERRED, D_UNATTRACTIVE)
-  - source: customFields.state
-    target: state
-    direction: crm_to_cc
+  - cc_field: customFields.state
+    crm_field: state
 
   # Client role (A_SUBSCRIBER, B_PARTNER, C_SUPPLIER, D_RIVAL)
-  - source: customFields.role
-    target: role
-    direction: crm_to_cc
+  - cc_field: customFields.role
+    crm_field: role
 
   # Notes
-  - source: customFields.notice
-    target: notice
-    direction: crm_to_cc
+  - cc_field: customFields.notice
+    crm_field: notice
 
   # Category (enum object -> readable value)
-  - source: customFields.category
-    target: category.value
-    direction: crm_to_cc
+  - cc_field: customFields.category
+    crm_field: category.value
 
   # Contact source (enum object -> readable value)
-  - source: customFields.contactSource
-    target: contactSource.value
-    direction: crm_to_cc
+  - cc_field: customFields.contactSource
+    crm_field: contactSource.value
 
   # Employees count (enum object -> readable value)
-  - source: customFields.employeesNumber
-    target: employeesNumber.value
-    direction: crm_to_cc
+  - cc_field: customFields.employeesNumber
+    crm_field: employeesNumber.value
 
   # Turnover bracket (enum object -> readable value)
-  - source: customFields.turnover
-    target: turnover.value
-    direction: crm_to_cc
+  - cc_field: customFields.turnover
+    crm_field: turnover.value
 
   # Legal form (enum object -> readable value)
-  - source: customFields.legalForm
-    target: legalForm.value
-    direction: crm_to_cc
+  - cc_field: customFields.legalForm
+    crm_field: legalForm.value
 
   # Bank account
-  - source: customFields.bankAccount
-    target: bankAccount
-    direction: crm_to_cc
+  - cc_field: customFields.bankAccount
+    crm_field: bankAccount
 
   # Databox (datova schranka)
-  - source: customFields.databox
-    target: databox
-    direction: crm_to_cc
+  - cc_field: customFields.databox
+    crm_field: databox
 
   # Social networks
-  - source: customFields.facebook
-    target: socialNetworkContact.facebook
-    direction: crm_to_cc
+  - cc_field: customFields.facebook
+    crm_field: socialNetworkContact.facebook
 
-  - source: customFields.linkedin
-    target: socialNetworkContact.linkedin
-    direction: crm_to_cc
+  - cc_field: customFields.linkedin
+    crm_field: socialNetworkContact.linkedin
 
   # CRM detail URL
-  - source: description
-    target: id
-    direction: crm_to_cc
+  - cc_field: description
+    crm_field: id
     transformers:
       - name: url
         params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Company&ei={value}" }

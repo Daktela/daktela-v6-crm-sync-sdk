@@ -1,17 +1,14 @@
 entity: contact
 lookup_field: email
 mappings:
-  - source: title
-    target: full_name
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: full_name
 
-  - source: email
-    target: email
-    direction: crm_to_cc
+  - cc_field: email
+    crm_field: email
 
-  - source: number
-    target: phone
-    direction: crm_to_cc
+  - cc_field: number
+    crm_field: phone
     transformers:
       - name: phone_normalize
         params: { format: e164 }
@@ -19,31 +16,27 @@ mappings:
   # Resolve CRM company_id → Daktela account name
   # The engine looks up the CRM account by "id" (resolve_from)
   # and uses its mapped "name" (resolve_to) as the Daktela value
-  - source: account
-    target: company_id
-    direction: crm_to_cc
+  - cc_field: account
+    crm_field: company_id
     relation:
       entity: account
       resolve_from: id
       resolve_to: name
 
-  - source: description
-    target: notes
-    direction: bidirectional
+  - cc_field: description
+    crm_field: notes
 
   # Multi-value custom field: Daktela stores tags as an array,
   # CRM stores them as comma-separated string
-  - source: customFields.tags
-    target: tags
-    direction: crm_to_cc
+  - cc_field: customFields.tags
+    crm_field: tags
     multi_value:
       strategy: split
       separator: ","
 
   # Multi-value custom field: join Daktela array into CRM string
-  - source: customFields.interests
-    target: interests
-    direction: cc_to_crm
+  - cc_field: customFields.interests
+    crm_field: interests
     multi_value:
       strategy: join
       separator: ", "

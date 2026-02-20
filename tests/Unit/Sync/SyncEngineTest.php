@@ -367,18 +367,18 @@ final class SyncEngineTest extends TestCase
     private function createConfig(): SyncConfiguration
     {
         $contactMapping = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
+            new FieldMapping('email', 'email'),
         ]);
 
         $accountMapping = new MappingCollection('account', 'name', [
-            new FieldMapping('title', 'company_name', SyncDirection::CrmToCc),
-            new FieldMapping('name', 'external_id', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'company_name'),
+            new FieldMapping('name', 'external_id'),
         ]);
 
         $activityMapping = new MappingCollection('activity', 'name', [
-            new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-            new FieldMapping('title', 'subject', SyncDirection::CcToCrm),
+            new FieldMapping('name', 'external_id'),
+            new FieldMapping('title', 'subject'),
         ]);
 
         return new SyncConfiguration(
@@ -402,24 +402,23 @@ final class SyncEngineTest extends TestCase
     private function createConfigWithRelations(): SyncConfiguration
     {
         $contactMapping = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
+            new FieldMapping('email', 'email'),
             new FieldMapping(
-                source: 'account',
-                target: 'company_id',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'account',
+                crmField: 'company_id',
                 relation: new RelationConfig('account', 'id', 'name'),
             ),
         ]);
 
         $accountMapping = new MappingCollection('account', 'name', [
-            new FieldMapping('title', 'company_name', SyncDirection::CrmToCc),
-            new FieldMapping('name', 'external_id', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'company_name'),
+            new FieldMapping('name', 'external_id'),
         ]);
 
         $activityMapping = new MappingCollection('activity', 'name', [
-            new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-            new FieldMapping('title', 'subject', SyncDirection::CcToCrm),
+            new FieldMapping('name', 'external_id'),
+            new FieldMapping('title', 'subject'),
         ]);
 
         return new SyncConfiguration(
@@ -443,13 +442,13 @@ final class SyncEngineTest extends TestCase
     private function createConfigWithDisabledAccount(): SyncConfiguration
     {
         $contactMapping = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
+            new FieldMapping('email', 'email'),
         ]);
 
         $activityMapping = new MappingCollection('activity', 'name', [
-            new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-            new FieldMapping('title', 'subject', SyncDirection::CcToCrm),
+            new FieldMapping('name', 'external_id'),
+            new FieldMapping('title', 'subject'),
         ]);
 
         return new SyncConfiguration(

@@ -7,7 +7,6 @@ namespace Daktela\CrmSync\Tests\Unit\Mapping;
 use Daktela\CrmSync\Exception\ConfigurationException;
 use Daktela\CrmSync\Mapping\MultiValueStrategy;
 use Daktela\CrmSync\Mapping\YamlMappingLoader;
-use Daktela\CrmSync\Sync\SyncDirection;
 use PHPUnit\Framework\TestCase;
 
 final class YamlMappingLoaderTest extends TestCase
@@ -33,9 +32,8 @@ final class YamlMappingLoaderTest extends TestCase
         $collection = $this->loader->load(__DIR__ . '/../../Fixtures/mappings/contacts.yaml');
 
         $first = $collection->mappings[0];
-        self::assertSame('title', $first->source);
-        self::assertSame('full_name', $first->target);
-        self::assertSame(SyncDirection::CrmToCc, $first->direction);
+        self::assertSame('title', $first->ccField);
+        self::assertSame('full_name', $first->crmField);
     }
 
     public function testMappingWithTransformers(): void
@@ -47,17 +45,6 @@ final class YamlMappingLoaderTest extends TestCase
         self::assertCount(1, $phone->transformers);
         self::assertSame('phone_normalize', $phone->transformers[0]['name']);
         self::assertSame('e164', $phone->transformers[0]['params']['format']);
-    }
-
-    public function testForDirectionFilter(): void
-    {
-        $collection = $this->loader->load(__DIR__ . '/../../Fixtures/mappings/contacts.yaml');
-
-        $filtered = $collection->forDirection(SyncDirection::CrmToCc);
-        self::assertCount(3, $filtered->mappings);
-
-        $filteredReverse = $collection->forDirection(SyncDirection::CcToCrm);
-        self::assertCount(0, $filteredReverse->mappings);
     }
 
     public function testFileNotFoundThrowsException(): void
@@ -74,8 +61,8 @@ final class YamlMappingLoaderTest extends TestCase
 
         // Fourth mapping has a relation config
         $accountField = $collection->mappings[3];
-        self::assertSame('account', $accountField->source);
-        self::assertSame('company_id', $accountField->target);
+        self::assertSame('account', $accountField->ccField);
+        self::assertSame('company_id', $accountField->crmField);
         self::assertNotNull($accountField->relation);
         self::assertSame('account', $accountField->relation->entity);
         self::assertSame('id', $accountField->relation->resolveFrom);
@@ -88,8 +75,8 @@ final class YamlMappingLoaderTest extends TestCase
 
         // Fifth mapping has multi_value config
         $tagsField = $collection->mappings[4];
-        self::assertSame('customFields.tags', $tagsField->source);
-        self::assertSame('tags', $tagsField->target);
+        self::assertSame('customFields.tags', $tagsField->ccField);
+        self::assertSame('tags', $tagsField->crmField);
         self::assertNotNull($tagsField->multiValue);
         self::assertSame(MultiValueStrategy::Split, $tagsField->multiValue->strategy);
         self::assertSame(',', $tagsField->multiValue->separator);

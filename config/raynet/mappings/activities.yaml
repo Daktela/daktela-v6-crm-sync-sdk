@@ -2,40 +2,33 @@ entity: activity
 lookup_field: externalId
 
 mappings:
-  - source: name
-    target: externalId
-    direction: cc_to_crm
+  - cc_field: name
+    crm_field: externalId
 
-  - source: title
-    target: subject
-    direction: cc_to_crm
+  - cc_field: title
+    crm_field: subject
 
-  - source: time
-    target: scheduledFrom
-    direction: cc_to_crm
+  - cc_field: time
+    crm_field: scheduledFrom
     transformers:
       - name: date_format
         params: { from: "Y-m-d H:i:s", to: "Y-m-d H:i" }
 
-  - source: time_close
-    target: scheduledTill
-    direction: cc_to_crm
+  - cc_field: time_close
+    crm_field: scheduledTill
     transformers:
       - name: date_format
         params: { from: "Y-m-d H:i:s", to: "Y-m-d H:i" }
 
-  - source: user_email
-    target: ownerEmail
-    direction: cc_to_crm
+  - cc_field: user_email
+    crm_field: ownerEmail
 
-  - source: user_login
-    target: ownerLogin
-    direction: cc_to_crm
+  - cc_field: user_login
+    crm_field: ownerLogin
 
   # Contact/person link: strip Daktela prefix to get Raynet person ID
-  - source: contact_name
-    target: contactPersonId
-    direction: cc_to_crm
+  - cc_field: contact_name
+    crm_field: contactPersonId
     transformers:
       - name: strip_prefix
         params: { value: "raynet_person_" }

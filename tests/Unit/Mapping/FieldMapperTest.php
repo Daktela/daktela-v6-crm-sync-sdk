@@ -27,8 +27,8 @@ final class FieldMapperTest extends TestCase
     public function testSimpleCrmToCcMapping(): void
     {
         $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
+            new FieldMapping('email', 'email'),
         ]);
 
         // CRM entity with CRM field names
@@ -46,8 +46,8 @@ final class FieldMapperTest extends TestCase
     public function testCcToCrmMapping(): void
     {
         $collection = new MappingCollection('activity', 'name', [
-            new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-            new FieldMapping('title', 'subject', SyncDirection::CcToCrm),
+            new FieldMapping('name', 'external_id'),
+            new FieldMapping('title', 'subject'),
         ]);
 
         // CC entity with CC field names
@@ -65,7 +65,7 @@ final class FieldMapperTest extends TestCase
     public function testDotNotationRead(): void
     {
         $collection = new MappingCollection('account', 'name', [
-            new FieldMapping('customFields.industry', 'industry', SyncDirection::CcToCrm),
+            new FieldMapping('customFields.industry', 'industry'),
         ]);
 
         $entity = Contact::fromArray([
@@ -80,7 +80,7 @@ final class FieldMapperTest extends TestCase
     public function testDotNotationWrite(): void
     {
         $collection = new MappingCollection('account', 'name', [
-            new FieldMapping('customFields.industry', 'industry', SyncDirection::CrmToCc),
+            new FieldMapping('customFields.industry', 'industry'),
         ]);
 
         $entity = Contact::fromArray([
@@ -95,7 +95,7 @@ final class FieldMapperTest extends TestCase
     public function testTransformerChain(): void
     {
         $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('number', 'phone', SyncDirection::CrmToCc, [
+            new FieldMapping('number', 'phone', [
                 ['name' => 'phone_normalize', 'params' => ['format' => 'e164']],
             ]),
         ]);
@@ -109,44 +109,10 @@ final class FieldMapperTest extends TestCase
         self::assertSame('+420123456789', $result['number']);
     }
 
-    public function testDirectionFiltering(): void
-    {
-        $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-        ]);
-
-        $entity = Contact::fromArray([
-            'full_name' => 'John',
-            'external_id' => 'ext-1',
-        ]);
-
-        $result = $this->mapper->map($entity, $collection, SyncDirection::CrmToCc);
-
-        self::assertArrayHasKey('title', $result);
-        self::assertArrayNotHasKey('external_id', $result);
-    }
-
-    public function testBidirectionalMappingIncludedInBothDirections(): void
-    {
-        $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('description', 'notes', SyncDirection::Bidirectional),
-        ]);
-
-        $entityCrm = Contact::fromArray(['notes' => 'CRM notes']);
-        $entityCc = Contact::fromArray(['description' => 'CC description']);
-
-        $resultToCc = $this->mapper->map($entityCrm, $collection, SyncDirection::CrmToCc);
-        $resultToCrm = $this->mapper->map($entityCc, $collection, SyncDirection::CcToCrm);
-
-        self::assertSame('CRM notes', $resultToCc['description']);
-        self::assertSame('CC description', $resultToCrm['notes']);
-    }
-
     public function testNullValuePassedThrough(): void
     {
         $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
         ]);
 
         $entity = Contact::fromArray([]);
@@ -161,9 +127,8 @@ final class FieldMapperTest extends TestCase
     {
         $collection = new MappingCollection('contact', 'email', [
             new FieldMapping(
-                source: 'account',
-                target: 'company_id',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'account',
+                crmField: 'company_id',
                 relation: new RelationConfig('account', 'id', 'name'),
             ),
         ]);
@@ -183,9 +148,8 @@ final class FieldMapperTest extends TestCase
     {
         $collection = new MappingCollection('contact', 'email', [
             new FieldMapping(
-                source: 'account',
-                target: 'company_id',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'account',
+                crmField: 'company_id',
                 relation: new RelationConfig('account', 'id', 'name'),
             ),
         ]);
@@ -206,9 +170,8 @@ final class FieldMapperTest extends TestCase
     {
         $collection = new MappingCollection('contact', 'email', [
             new FieldMapping(
-                source: 'account',
-                target: 'company_id',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'account',
+                crmField: 'company_id',
                 relation: new RelationConfig('account', 'id', 'name'),
             ),
         ]);
@@ -224,9 +187,8 @@ final class FieldMapperTest extends TestCase
     {
         $collection = new MappingCollection('contact', 'email', [
             new FieldMapping(
-                source: 'customFields.tags',
-                target: 'tags',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'customFields.tags',
+                crmField: 'tags',
                 multiValue: new MultiValueConfig(MultiValueStrategy::Split, ','),
             ),
         ]);
@@ -242,9 +204,8 @@ final class FieldMapperTest extends TestCase
     {
         $collection = new MappingCollection('activity', 'name', [
             new FieldMapping(
-                source: 'customFields.interests',
-                target: 'interests',
-                direction: SyncDirection::CcToCrm,
+                ccField: 'customFields.interests',
+                crmField: 'interests',
                 multiValue: new MultiValueConfig(MultiValueStrategy::Join, ', '),
             ),
         ]);
@@ -263,15 +224,13 @@ final class FieldMapperTest extends TestCase
         // Relation resolution happens before multi-value, so this tests the order
         $collection = new MappingCollection('contact', 'email', [
             new FieldMapping(
-                source: 'account',
-                target: 'company_id',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'account',
+                crmField: 'company_id',
                 relation: new RelationConfig('account', 'id', 'name'),
             ),
             new FieldMapping(
-                source: 'customFields.tags',
-                target: 'tags',
-                direction: SyncDirection::CrmToCc,
+                ccField: 'customFields.tags',
+                crmField: 'tags',
                 multiValue: new MultiValueConfig(MultiValueStrategy::Split, ','),
             ),
         ]);
@@ -292,10 +251,10 @@ final class FieldMapperTest extends TestCase
     public function testAppendMergesArrays(): void
     {
         $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('customFields.number', 'tel1', SyncDirection::CrmToCc, [
+            new FieldMapping('customFields.number', 'tel1', [
                 ['name' => 'wrap_array', 'params' => []],
             ]),
-            new FieldMapping('customFields.number', 'tel2', SyncDirection::CrmToCc, [
+            new FieldMapping('customFields.number', 'tel2', [
                 ['name' => 'wrap_array', 'params' => []],
             ], append: true),
         ]);
@@ -313,10 +272,10 @@ final class FieldMapperTest extends TestCase
     public function testAppendSkipsEmptyValues(): void
     {
         $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('customFields.number', 'tel1', SyncDirection::CrmToCc, [
+            new FieldMapping('customFields.number', 'tel1', [
                 ['name' => 'wrap_array', 'params' => []],
             ]),
-            new FieldMapping('customFields.number', 'tel2', SyncDirection::CrmToCc, [
+            new FieldMapping('customFields.number', 'tel2', [
                 ['name' => 'wrap_array', 'params' => []],
             ], append: true),
         ]);
@@ -334,7 +293,7 @@ final class FieldMapperTest extends TestCase
     public function testAppendToNonExistentKeyCreatesArray(): void
     {
         $collection = new MappingCollection('contact', 'email', [
-            new FieldMapping('customFields.tags', 'extra_tag', SyncDirection::CrmToCc, [], append: true),
+            new FieldMapping('customFields.tags', 'extra_tag', [], append: true),
         ]);
 
         $entity = Contact::fromArray(['extra_tag' => 'vip']);

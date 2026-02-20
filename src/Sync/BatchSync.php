@@ -325,8 +325,8 @@ final class BatchSync
         // Find what CC field maps to resolve_to by scanning the entity's own mappings
         $resolveToSourceField = null;
         foreach ($mapping->mappings as $fm) {
-            if ($fm->source === $relation->resolveTo) {
-                $resolveToSourceField = $fm->target; // CRM-side field
+            if ($fm->ccField === $relation->resolveTo) {
+                $resolveToSourceField = $fm->crmField; // CRM-side field
                 break;
             }
         }

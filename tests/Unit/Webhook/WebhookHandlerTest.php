@@ -97,8 +97,8 @@ final class WebhookHandlerTest extends TestCase
             ->willReturn(Contact::fromArray(['id' => 'cc-1']));
 
         $contactMapping = new MappingCollection('contact', 'email', [
-            new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-            new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+            new FieldMapping('title', 'full_name'),
+            new FieldMapping('email', 'email'),
         ]);
 
         $config = new SyncConfiguration(

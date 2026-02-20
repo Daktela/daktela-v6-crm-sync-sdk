@@ -1,15 +1,12 @@
 entity: contact
 lookup_field: email
 mappings:
-  - source: title
-    target: full_name
-    direction: crm_to_cc
-  - source: email
-    target: email
-    direction: crm_to_cc
-  - source: number
-    target: phone
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: full_name
+  - cc_field: email
+    crm_field: email
+  - cc_field: number
+    crm_field: phone
     transformers:
       - name: phone_normalize
         params: { format: e164 }

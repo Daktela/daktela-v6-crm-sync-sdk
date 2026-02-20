@@ -219,11 +219,11 @@ function displayMappings(array $mappings, string $entityDirection): void
 {
     // Column headers depend on direction
     if ($entityDirection === 'crm_to_cc') {
-        $leftLabel = 'CRM Field (source)';
-        $rightLabel = 'Daktela Field (target)';
+        $leftLabel = 'CRM Field';
+        $rightLabel = 'CC Field';
     } elseif ($entityDirection === 'cc_to_crm') {
-        $leftLabel = 'Daktela Field (source)';
-        $rightLabel = 'CRM Field (target)';
+        $leftLabel = 'CC Field';
+        $rightLabel = 'CRM Field';
     } else {
         $leftLabel = 'CC Field';
         $rightLabel = 'CRM Field';
@@ -233,11 +233,11 @@ function displayMappings(array $mappings, string $entityDirection): void
     $rows = [];
     foreach ($mappings as $mapping) {
         if ($entityDirection === 'crm_to_cc') {
-            $left = $mapping->target;
-            $right = $mapping->source;
+            $left = $mapping->crmField;
+            $right = $mapping->ccField;
         } else {
-            $left = $mapping->source;
-            $right = $mapping->target;
+            $left = $mapping->ccField;
+            $right = $mapping->crmField;
         }
 
         $extras = [];
@@ -253,9 +253,6 @@ function displayMappings(array $mappings, string $entityDirection): void
         }
         if ($mapping->append) {
             $extras[] = yellow('append');
-        }
-        if ($mapping->direction->value !== $entityDirection && $mapping->direction->value !== 'bidirectional') {
-            $extras[] = dim('(' . $mapping->direction->value . ')');
         }
 
         $rows[] = [
@@ -299,9 +296,8 @@ function buildJsonOutput(
         if ($collection !== null) {
             foreach ($collection->mappings as $mapping) {
                 $m = [
-                    'source' => $mapping->source,
-                    'target' => $mapping->target,
-                    'direction' => $mapping->direction->value,
+                    'cc_field' => $mapping->ccField,
+                    'crm_field' => $mapping->crmField,
                 ];
                 if ($mapping->transformers !== []) {
                     $m['transformers'] = array_map(static fn ($t) => $t['name'], $mapping->transformers);

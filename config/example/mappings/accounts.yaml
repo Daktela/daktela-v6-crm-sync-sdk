@@ -1,28 +1,23 @@
 entity: account
 lookup_field: name
 mappings:
-  - source: title
-    target: company_name
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: company_name
 
-  - source: name
-    target: external_id
-    direction: crm_to_cc
+  - cc_field: name
+    crm_field: external_id
 
-  - source: description
-    target: description
-    direction: crm_to_cc
+  - cc_field: description
+    crm_field: description
 
-  - source: customFields.industry
-    target: industry
-    direction: crm_to_cc
+  - cc_field: customFields.industry
+    crm_field: industry
     transformers:
       - name: string_case
         params: { case: lower }
 
   # Multi-value: Daktela stores categories as array, CRM as array too
-  - source: customFields.categories
-    target: categories
-    direction: crm_to_cc
+  - cc_field: customFields.categories
+    crm_field: categories
     multi_value:
       strategy: as_array

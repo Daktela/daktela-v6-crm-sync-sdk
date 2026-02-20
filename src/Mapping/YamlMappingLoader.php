@@ -6,7 +6,6 @@ namespace Daktela\CrmSync\Mapping;
 
 use Daktela\CrmSync\Config\EnvResolver;
 use Daktela\CrmSync\Exception\ConfigurationException;
-use Daktela\CrmSync\Sync\SyncDirection;
 use Symfony\Component\Yaml\Yaml;
 
 final class YamlMappingLoader
@@ -65,27 +64,17 @@ final class YamlMappingLoader
      */
     private function parseFieldMapping(string $filePath, int $index, array $item): FieldMapping
     {
-        if (!isset($item['source']) || !is_string($item['source'])) {
+        if (!isset($item['cc_field']) || !is_string($item['cc_field'])) {
             throw ConfigurationException::invalidMappingFile(
                 $filePath,
-                sprintf('Mapping at index %d: missing or invalid "source"', $index),
+                sprintf('Mapping at index %d: missing or invalid "cc_field"', $index),
             );
         }
 
-        if (!isset($item['target']) || !is_string($item['target'])) {
+        if (!isset($item['crm_field']) || !is_string($item['crm_field'])) {
             throw ConfigurationException::invalidMappingFile(
                 $filePath,
-                sprintf('Mapping at index %d: missing or invalid "target"', $index),
-            );
-        }
-
-        $directionStr = (string) ($item['direction'] ?? 'bidirectional');
-        $direction = SyncDirection::tryFrom($directionStr);
-
-        if ($direction === null) {
-            throw ConfigurationException::invalidMappingFile(
-                $filePath,
-                sprintf('Mapping at index %d: invalid direction "%s"', $index, $directionStr),
+                sprintf('Mapping at index %d: missing or invalid "crm_field"', $index),
             );
         }
 
@@ -140,9 +129,8 @@ final class YamlMappingLoader
         }
 
         return new FieldMapping(
-            source: $item['source'],
-            target: $item['target'],
-            direction: $direction,
+            ccField: $item['cc_field'],
+            crmField: $item['crm_field'],
             transformers: $transformers,
             multiValue: $multiValue,
             relation: $relation,

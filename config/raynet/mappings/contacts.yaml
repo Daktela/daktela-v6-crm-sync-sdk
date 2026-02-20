@@ -3,129 +3,106 @@ lookup_field: name
 
 mappings:
   # Daktela display name <- Raynet fullName (computed by Raynet API)
-  - source: title
-    target: fullName
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: fullName
 
   # Daktela unique name <- prefix + Raynet person ID
-  - source: name
-    target: id
-    direction: crm_to_cc
+  - cc_field: name
+    crm_field: id
     transformers:
       - name: prefix
         params: { value: "raynet_person_" }
 
   # First/last name
-  - source: firstname
-    target: firstName
-    direction: crm_to_cc
+  - cc_field: firstname
+    crm_field: firstName
 
-  - source: lastname
-    target: lastName
-    direction: crm_to_cc
+  - cc_field: lastname
+    crm_field: lastName
 
   # Academic titles
-  - source: customFields.titleBefore
-    target: titleBefore
-    direction: crm_to_cc
+  - cc_field: customFields.titleBefore
+    crm_field: titleBefore
 
-  - source: customFields.titleAfter
-    target: titleAfter
-    direction: crm_to_cc
+  - cc_field: customFields.titleAfter
+    crm_field: titleAfter
 
   # Salutation
-  - source: customFields.salutation
-    target: salutation
-    direction: crm_to_cc
+  - cc_field: customFields.salutation
+    crm_field: salutation
 
   # Primary email
-  - source: customFields.email
-    target: contactInfo.email
-    direction: crm_to_cc
+  - cc_field: customFields.email
+    crm_field: contactInfo.email
     transformers:
       - name: wrap_array
 
   # Secondary email (appended to same Daktela field)
-  - source: customFields.email
-    target: contactInfo.email2
-    direction: crm_to_cc
+  - cc_field: customFields.email
+    crm_field: contactInfo.email2
     append: true
     transformers:
       - name: wrap_array
 
   # Primary phone
-  - source: customFields.number
-    target: contactInfo.tel1
-    direction: crm_to_cc
+  - cc_field: customFields.number
+    crm_field: contactInfo.tel1
     transformers:
       - name: wrap_array
 
   # Secondary phone (appended to same Daktela field)
-  - source: customFields.number
-    target: contactInfo.tel2
-    direction: crm_to_cc
+  - cc_field: customFields.number
+    crm_field: contactInfo.tel2
     append: true
     transformers:
       - name: wrap_array
 
   # Website
-  - source: customFields.www
-    target: contactInfo.www
-    direction: crm_to_cc
+  - cc_field: customFields.www
+    crm_field: contactInfo.www
 
   # Birthday
-  - source: customFields.birthday
-    target: birthday
-    direction: crm_to_cc
+  - cc_field: customFields.birthday
+    crm_field: birthday
 
   # Notes
-  - source: customFields.notice
-    target: notice
-    direction: crm_to_cc
+  - cc_field: customFields.notice
+    crm_field: notice
 
   # Category (enum object -> readable value)
-  - source: customFields.category
-    target: category.value
-    direction: crm_to_cc
+  - cc_field: customFields.category
+    crm_field: category.value
 
   # Contact source (enum object -> readable value)
-  - source: customFields.contactSource
-    target: contactSource.value
-    direction: crm_to_cc
+  - cc_field: customFields.contactSource
+    crm_field: contactSource.value
 
   # Social networks
-  - source: customFields.facebook
-    target: socialNetworkContact.facebook
-    direction: crm_to_cc
+  - cc_field: customFields.facebook
+    crm_field: socialNetworkContact.facebook
 
-  - source: customFields.linkedin
-    target: socialNetworkContact.linkedin
-    direction: crm_to_cc
+  - cc_field: customFields.linkedin
+    crm_field: socialNetworkContact.linkedin
 
-  - source: customFields.twitter
-    target: socialNetworkContact.twitter
-    direction: crm_to_cc
+  - cc_field: customFields.twitter
+    crm_field: socialNetworkContact.twitter
 
-  - source: customFields.instagram
-    target: socialNetworkContact.instagram
-    direction: crm_to_cc
+  - cc_field: customFields.instagram
+    crm_field: socialNetworkContact.instagram
 
-  - source: customFields.skype
-    target: socialNetworkContact.skype
-    direction: crm_to_cc
+  - cc_field: customFields.skype
+    crm_field: socialNetworkContact.skype
 
   # CRM detail URL
-  - source: description
-    target: id
-    direction: crm_to_cc
+  - cc_field: description
+    crm_field: id
     transformers:
       - name: url
         params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Person&ei={value}" }
 
   # Account relation: resolve Raynet company ID -> Daktela account name
-  - source: account
-    target: primaryRelationship.company.id
-    direction: crm_to_cc
+  - cc_field: account
+    crm_field: primaryRelationship.company.id
     relation:
       entity: account
       resolve_from: id

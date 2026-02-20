@@ -18,9 +18,6 @@ final class FieldMapper
     /**
      * Maps fields from a source entity to target data array based on mappings and direction.
      *
-     * For CrmToCc: source=CRM field (target in YAML), target=CC field (source in YAML)
-     * For CcToCrm: source=CC field (source in YAML), target=CRM field (target in YAML)
-     *
      * @param array<string, array<string, string>> $relationMaps Keyed by entity type,
      *   each containing a map of source values to resolved target values.
      *   Example: ['account' => ['crm-acc-1' => 'acme', 'crm-acc-2' => 'globex']]
@@ -32,19 +29,17 @@ final class FieldMapper
         SyncDirection $direction,
         array $relationMaps = [],
     ): array {
-        $filtered = $collection->forDirection($direction);
         $result = [];
 
-        foreach ($filtered->mappings as $mapping) {
-            // In YAML: source = CC field, target = CRM field
-            // CrmToCc: read from CRM (target), write to CC (source)
-            // CcToCrm: read from CC (source), write to CRM (target)
+        foreach ($collection->mappings as $mapping) {
+            // CrmToCc: read from CRM field, write to CC field
+            // CcToCrm: read from CC field, write to CRM field
             if ($direction === SyncDirection::CrmToCc) {
-                $readField = $mapping->target;
-                $writeField = $mapping->source;
+                $readField = $mapping->crmField;
+                $writeField = $mapping->ccField;
             } else {
-                $readField = $mapping->source;
-                $writeField = $mapping->target;
+                $readField = $mapping->ccField;
+                $writeField = $mapping->crmField;
             }
 
             $value = $this->readNestedValue($entity, $readField);

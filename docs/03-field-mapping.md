@@ -8,9 +8,8 @@ Field mappings define how data is translated between Daktela CC fields and CRM f
 entity: contact          # Entity type
 lookup_field: email      # Field used for upsert lookups
 mappings:
-  - source: title        # Daktela CC field name
-    target: full_name    # CRM field name
-    direction: crm_to_cc # Sync direction
+  - cc_field: title      # Daktela CC field name
+    crm_field: full_name # CRM field name
     transformers:        # Optional value transformers
       - name: string_case
         params: { case: title }
@@ -25,20 +24,18 @@ mappings:
 
 ## Direction
 
-Each field mapping specifies when it is active:
+Sync direction is configured at the **entity level** in `sync.yaml`, not per field. All field mappings within an entity follow the entity's direction. The mapping engine automatically reads from the correct side based on direction:
 
-- `crm_to_cc` — Field only syncs when pushing from CRM to Daktela
-- `cc_to_crm` — Field only syncs when pushing from Daktela to CRM
-- `bidirectional` — Field syncs in both directions
+- `crm_to_cc` — reads CRM fields (`crm_field`), writes CC fields (`cc_field`)
+- `cc_to_crm` — reads CC fields (`cc_field`), writes CRM fields (`crm_field`)
 
 ## Dot Notation for Nested Fields
 
 Access nested fields (such as Daktela's `customFields`) using dots:
 
 ```yaml
-- source: customFields.industry
-  target: industry
-  direction: crm_to_cc
+- cc_field: customFields.industry
+  crm_field: industry
 ```
 
 This reads/writes `$entity['customFields']['industry']`. Intermediate arrays are created automatically when writing.
@@ -46,9 +43,8 @@ This reads/writes `$entity['customFields']['industry']`. Intermediate arrays are
 You can also nest on the CRM side:
 
 ```yaml
-- source: email
-  target: contact_info.email
-  direction: crm_to_cc
+- cc_field: email
+  crm_field: contact_info.email
 ```
 
 ---
@@ -73,9 +69,8 @@ Daktela custom fields can store multiple values as arrays (e.g., tags, categorie
 
 ```yaml
 # CRM "web,mobile,api" → Daktela ["web", "mobile", "api"]
-- source: customFields.tags
-  target: tags
-  direction: crm_to_cc
+- cc_field: customFields.tags
+  crm_field: tags
   multi_value:
     strategy: split
     separator: ","
@@ -85,9 +80,8 @@ Daktela custom fields can store multiple values as arrays (e.g., tags, categorie
 
 ```yaml
 # Daktela ["sports", "music"] → CRM "sports, music"
-- source: customFields.interests
-  target: interests
-  direction: cc_to_crm
+- cc_field: customFields.interests
+  crm_field: interests
   multi_value:
     strategy: join
     separator: ", "
@@ -96,9 +90,8 @@ Daktela custom fields can store multiple values as arrays (e.g., tags, categorie
 **Take only the first value from a multi-value field:**
 
 ```yaml
-- source: customFields.disposition
-  target: primary_disposition
-  direction: cc_to_crm
+- cc_field: customFields.disposition
+  crm_field: primary_disposition
   multi_value:
     strategy: first
 ```
@@ -106,9 +99,8 @@ Daktela custom fields can store multiple values as arrays (e.g., tags, categorie
 **Pass arrays as-is (both systems support arrays):**
 
 ```yaml
-- source: customFields.categories
-  target: categories
-  direction: crm_to_cc
+- cc_field: customFields.categories
+  crm_field: categories
   multi_value:
     strategy: as_array
 ```
@@ -131,9 +123,8 @@ When syncing contacts, you often need to resolve references to other entities. F
 ### Configuration
 
 ```yaml
-- source: account          # Daktela CC field
-  target: company_id       # CRM field
-  direction: crm_to_cc
+- cc_field: account          # Daktela CC field
+  crm_field: company_id      # CRM field
   relation:
     entity: account        # The related entity type
     resolve_from: id       # Match CRM account by this field

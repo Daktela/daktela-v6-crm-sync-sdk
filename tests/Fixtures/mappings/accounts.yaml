@@ -1,15 +1,12 @@
 entity: account
 lookup_field: name
 mappings:
-  - source: title
-    target: company_name
-    direction: crm_to_cc
-  - source: name
-    target: external_id
-    direction: crm_to_cc
-  - source: customFields.industry
-    target: industry
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: company_name
+  - cc_field: name
+    crm_field: external_id
+  - cc_field: customFields.industry
+    crm_field: industry
     transformers:
       - name: string_case
         params: { case: lower }
