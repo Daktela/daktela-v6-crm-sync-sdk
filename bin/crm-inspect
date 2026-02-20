@@ -105,7 +105,7 @@ function showHelp(): void
                               (default: CRM_INSPECT_BOOTSTRAP env)
       -c, --config <path>     Config file path, passed to bootstrap as $configPath
                               (default: SYNC_CONFIG_PATH env)
-      --limit <n>             Number of records (default: 20 for list, 5 for fields)
+      --limit <n>             Number of records (default: 20)
       --json                  Output as JSON
       -h, --help              Show this help message
 
@@ -618,7 +618,7 @@ try {
                 fwrite(STDERR, red("Usage: crm-inspect fields <entity>") . "\n");
                 exit(1);
             }
-            cmd_fields($adapter, $args[0], $opts['limit'] ?? 5, $opts['json']);
+            cmd_fields($adapter, $args[0], $opts['limit'] ?? 20, $opts['json']);
         })(),
 
         'list' => (function () use ($adapter, $args, $opts) {
