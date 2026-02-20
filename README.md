@@ -36,7 +36,7 @@ A universal sync layer between **Daktela Contact Centre V6** and any CRM system.
 ## Installation
 
 ```bash
-composer require daktela/crm-sync
+composer require daktela/daktela-v6-crm-sync
 ```
 
 ## Quick Start

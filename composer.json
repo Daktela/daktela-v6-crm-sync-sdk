@@ -1,5 +1,5 @@
 {
-    "name": "daktela/crm-sync",
+    "name": "daktela/daktela-v6-crm-sync",
     "description": "Universal sync layer between Daktela Contact Centre V6 and any CRM system",
     "type": "library",
     "license": "proprietary",

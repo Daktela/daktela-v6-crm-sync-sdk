@@ -14,7 +14,7 @@
  * Expected project layout:
  *
  *   your-project/
- *   ├── composer.json          # requires daktela/crm-sync
+ *   ├── composer.json          # requires daktela/daktela-v6-crm-sync
  *   ├── config/
  *   │   ├── sync.yaml          # single config file (copied from config/raynet/)
  *   │   └── mappings/

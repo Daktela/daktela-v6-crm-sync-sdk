@@ -3,7 +3,7 @@
 ## Installation
 
 ```bash
-composer require daktela/crm-sync
+composer require daktela/daktela-v6-crm-sync
 ```
 
 ## Prerequisites
