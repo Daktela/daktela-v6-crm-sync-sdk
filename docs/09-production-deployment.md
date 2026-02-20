@@ -114,7 +114,7 @@ $config = (new YamlConfigLoader())->load(__DIR__ . '/../config/sync.yaml');
 $logger = new Logger('sync');
 $logger->pushHandler(new StreamHandler(__DIR__ . '/../var/log/sync.log', Logger::INFO));
 
-$ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $logger);
+$ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $config->database, $logger);
 $crmAdapter = new YourCrmAdapter(/* ... */);
 $stateStore = new FileSyncStateStore(__DIR__ . '/../var/data/sync-state.json');
 

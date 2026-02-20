@@ -71,6 +71,7 @@ $logger->info('Raynet CRM connection OK');
 $ccAdapter = new DaktelaAdapter(
     $syncConfig->instanceUrl,
     $syncConfig->accessToken,
+    $syncConfig->database,
     $logger,
 );
 

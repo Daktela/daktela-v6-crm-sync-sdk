@@ -58,6 +58,7 @@ if ($resetState) {
 $ccAdapter = new DaktelaAdapter(
     $config->instanceUrl,
     $config->accessToken,
+    $config->database,
     $logger,
 );
 

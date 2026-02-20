@@ -32,6 +32,7 @@ Create a `config/sync.yaml` file:
 daktela:
   instance_url: "https://your-instance.daktela.com"
   access_token: "${DAKTELA_ACCESS_TOKEN}"
+  database: "default"
 
 sync:
   batch_size: 100
@@ -138,6 +139,7 @@ $config = (new YamlConfigLoader())->load(__DIR__ . '/config/sync.yaml');
 $ccAdapter = new DaktelaAdapter(
     $config->instanceUrl,
     $config->accessToken,
+    $config->database,
     new NullLogger(),
 );
 

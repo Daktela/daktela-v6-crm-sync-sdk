@@ -427,6 +427,7 @@ final class BatchSyncTest extends TestCase
         return new SyncConfiguration(
             instanceUrl: 'https://test.daktela.com',
             accessToken: 'test-token',
+            database: 'test-db',
             batchSize: $batchSize,
             entities: [
                 'contact' => new EntitySyncConfig(true, SyncDirection::CrmToCc, 'contacts.yaml'),
@@ -465,6 +466,7 @@ final class BatchSyncTest extends TestCase
         return new SyncConfiguration(
             instanceUrl: 'https://test.daktela.com',
             accessToken: 'test-token',
+            database: 'test-db',
             batchSize: 100,
             entities: [
                 'contact' => new EntitySyncConfig(true, SyncDirection::CrmToCc, 'contacts.yaml'),

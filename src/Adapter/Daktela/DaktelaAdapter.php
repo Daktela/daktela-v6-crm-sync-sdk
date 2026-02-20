@@ -24,6 +24,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
     public function __construct(
         string $instanceUrl,
         string $accessToken,
+        private readonly string $database,
         private readonly LoggerInterface $logger,
     ) {
         $this->client = new Client($instanceUrl, $accessToken);
@@ -246,6 +247,10 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
      */
     private function createEntity(string $model, array $attributes): array
     {
+        if (in_array($model, ['Contacts', 'Accounts'], true)) {
+            $attributes['database'] = $this->database;
+        }
+
         try {
             $request = RequestFactory::buildCreateRequest($model);
             $request->addAttributes($attributes);
@@ -274,6 +279,10 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
      */
     private function updateEntity(string $model, string $id, array $attributes): array
     {
+        if (in_array($model, ['Contacts', 'Accounts'], true)) {
+            $attributes['database'] = $this->database;
+        }
+
         try {
             $request = RequestFactory::buildUpdateRequest($model);
             $request->setObjectName($id);

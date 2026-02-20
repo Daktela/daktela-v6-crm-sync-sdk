@@ -25,6 +25,7 @@ final class YamlConfigLoaderTest extends TestCase
 
         self::assertSame('https://test.daktela.com', $config->instanceUrl);
         self::assertSame('test-token', $config->accessToken);
+        self::assertSame('test-db', $config->database);
         self::assertSame(50, $config->batchSize);
         self::assertSame('test-secret', $config->webhookSecret);
     }

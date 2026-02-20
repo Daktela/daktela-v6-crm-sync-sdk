@@ -20,6 +20,7 @@ declare(strict_types=1);
 })();
 
 use Daktela\CrmSync\Adapter\CrmAdapterInterface;
+use Daktela\CrmSync\Exception\SyncException;
 
 // ── Color helpers ───────────────────────────────────────────────────────
 
@@ -94,8 +95,10 @@ function showHelp(): void
       list <entity>                 Browse contacts/accounts
       show <entity> <id>            Show a single record by ID
       find <entity> <field> <value> Find a record by field lookup
+      search <entity> <query>       Fulltext search across records
 
     Entity names: contact, account, activity
+    (search supports: contact, account)
 
     Options:
       -b, --bootstrap <path>  Bootstrap PHP file that returns a CrmAdapterInterface
@@ -552,6 +555,46 @@ function cmd_find(CrmAdapterInterface $adapter, string $entity, string $field, s
     }
 }
 
+function cmd_search(CrmAdapterInterface $adapter, string $entity, string $query, int $limit, bool $json): void
+{
+    validateIterableEntity($entity);
+
+    $records = [];
+    $count = 0;
+
+    $generator = match ($entity) {
+        'contact' => $adapter->searchContacts($query),
+        'account' => $adapter->searchAccounts($query),
+    };
+
+    try {
+        foreach ($generator as $entityObj) {
+            $records[] = $entityObj->toArray();
+            $count++;
+            if ($count >= $limit) {
+                break;
+            }
+        }
+    } catch (\Throwable $e) {
+        fwrite(STDERR, yellow("  Warning: " . $e->getMessage()) . "\n");
+    }
+
+    if ($json) {
+        outputJson($records);
+        return;
+    }
+
+    echo bold("{$entity} search") . dim(" \"{$query}\" — " . count($records) . " results") . "\n\n";
+
+    if ($records === []) {
+        echo dim("  (no results)") . "\n";
+        return;
+    }
+
+    $columns = detectColumns($entity, $records);
+    printTable($records, $columns);
+}
+
 // ── Main dispatch ───────────────────────────────────────────────────────
 
 $parsed = parseArgv($argv);
@@ -566,44 +609,57 @@ if ($opts['help'] || $command === null || $command === 'help') {
 
 $adapter = bootstrap($opts['bootstrap'], $opts['config']);
 
-match ($command) {
-    'ping' => cmd_ping($adapter, $opts['json']),
+try {
+    match ($command) {
+        'ping' => cmd_ping($adapter, $opts['json']),
 
-    'fields' => (function () use ($adapter, $args, $opts) {
-        if ($args === []) {
-            fwrite(STDERR, red("Usage: crm-inspect fields <entity>") . "\n");
+        'fields' => (function () use ($adapter, $args, $opts) {
+            if ($args === []) {
+                fwrite(STDERR, red("Usage: crm-inspect fields <entity>") . "\n");
+                exit(1);
+            }
+            cmd_fields($adapter, $args[0], $opts['limit'] ?? 5, $opts['json']);
+        })(),
+
+        'list' => (function () use ($adapter, $args, $opts) {
+            if ($args === []) {
+                fwrite(STDERR, red("Usage: crm-inspect list <entity>") . "\n");
+                exit(1);
+            }
+            cmd_list($adapter, $args[0], $opts['limit'] ?? 20, $opts['json']);
+        })(),
+
+        'show' => (function () use ($adapter, $args, $opts) {
+            if (count($args) < 2) {
+                fwrite(STDERR, red("Usage: crm-inspect show <entity> <id>") . "\n");
+                exit(1);
+            }
+            cmd_show($adapter, $args[0], $args[1], $opts['json']);
+        })(),
+
+        'find' => (function () use ($adapter, $args, $opts) {
+            if (count($args) < 3) {
+                fwrite(STDERR, red("Usage: crm-inspect find <entity> <field> <value>") . "\n");
+                exit(1);
+            }
+            cmd_find($adapter, $args[0], $args[1], $args[2], $opts['json']);
+        })(),
+
+        'search' => (function () use ($adapter, $args, $opts) {
+            if (count($args) < 2) {
+                fwrite(STDERR, red("Usage: crm-inspect search <entity> <query>") . "\n");
+                exit(1);
+            }
+            cmd_search($adapter, $args[0], implode(' ', array_slice($args, 1)), $opts['limit'] ?? 20, $opts['json']);
+        })(),
+
+        default => (function () use ($command) {
+            fwrite(STDERR, red("Unknown command: {$command}") . "\n");
+            fwrite(STDERR, "Run 'crm-inspect --help' for usage.\n");
             exit(1);
-        }
-        cmd_fields($adapter, $args[0], $opts['limit'] ?? 5, $opts['json']);
-    })(),
-
-    'list' => (function () use ($adapter, $args, $opts) {
-        if ($args === []) {
-            fwrite(STDERR, red("Usage: crm-inspect list <entity>") . "\n");
-            exit(1);
-        }
-        cmd_list($adapter, $args[0], $opts['limit'] ?? 20, $opts['json']);
-    })(),
-
-    'show' => (function () use ($adapter, $args, $opts) {
-        if (count($args) < 2) {
-            fwrite(STDERR, red("Usage: crm-inspect show <entity> <id>") . "\n");
-            exit(1);
-        }
-        cmd_show($adapter, $args[0], $args[1], $opts['json']);
-    })(),
-
-    'find' => (function () use ($adapter, $args, $opts) {
-        if (count($args) < 3) {
-            fwrite(STDERR, red("Usage: crm-inspect find <entity> <field> <value>") . "\n");
-            exit(1);
-        }
-        cmd_find($adapter, $args[0], $args[1], $args[2], $opts['json']);
-    })(),
-
-    default => (function () use ($command) {
-        fwrite(STDERR, red("Unknown command: {$command}") . "\n");
-        fwrite(STDERR, "Run 'crm-inspect --help' for usage.\n");
-        exit(1);
-    })(),
-};
+        })(),
+    };
+} catch (SyncException $e) {
+    fwrite(STDERR, red("Error: " . $e->getMessage()) . "\n");
+    exit(1);
+}

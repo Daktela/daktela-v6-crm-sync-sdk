@@ -48,6 +48,7 @@ final class YamlConfigLoader
 
         $instanceUrl = (string) ($data['daktela']['instance_url'] ?? '');
         $accessToken = (string) ($data['daktela']['access_token'] ?? '');
+        $database = (string) ($data['daktela']['database'] ?? '');
         $batchSize = (int) ($data['sync']['batch_size'] ?? 100);
         $webhookSecret = (string) ($data['webhook']['secret'] ?? '');
 
@@ -98,6 +99,7 @@ final class YamlConfigLoader
         return new SyncConfiguration(
             instanceUrl: $instanceUrl,
             accessToken: $accessToken,
+            database: $database,
             batchSize: $batchSize,
             entities: $entities,
             mappings: $mappings,

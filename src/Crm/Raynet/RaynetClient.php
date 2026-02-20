@@ -101,6 +101,33 @@ class RaynetClient
     }
 
     /**
+     * Fulltext search using the ?fulltext= query parameter.
+     *
+     * @return \Generator<int, array<string, mixed>>
+     */
+    public function search(string $entity, string $fulltext, int $limit = 100): \Generator
+    {
+        $offset = 0;
+
+        do {
+            $response = $this->get($entity . '/', [
+                'fulltext' => $fulltext,
+                'offset' => $offset,
+                'limit' => $limit,
+            ]);
+
+            $data = $response['data'] ?? [];
+            $totalCount = $response['totalCount'] ?? 0;
+
+            foreach ($data as $record) {
+                yield $record;
+            }
+
+            $offset += $limit;
+        } while ($offset < $totalCount);
+    }
+
+    /**
      * Raynet uses PUT for creation.
      *
      * @param array<string, mixed> $data

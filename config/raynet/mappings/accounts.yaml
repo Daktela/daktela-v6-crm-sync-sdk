@@ -7,14 +7,6 @@ mappings:
     target: name
     direction: crm_to_cc
 
-  # CRM detail URL
-  - source: description
-    target: id
-    direction: crm_to_cc
-    transformers:
-      - name: url
-        params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Company&ei={value}" }
-
   # Daktela unique name <- prefix + Raynet company ID
   - source: name
     target: id
@@ -23,6 +15,119 @@ mappings:
       - name: prefix
         params: { value: "raynet_" }
 
+  # Registration number (ICO)
   - source: customFields.regNumber
     target: regNumber
     direction: crm_to_cc
+
+  # Tax number (DIC)
+  - source: customFields.taxNumber
+    target: taxNumber
+    direction: crm_to_cc
+
+  # VAT payer status (YES/NO)
+  - source: customFields.taxPayer
+    target: taxPayer
+    direction: crm_to_cc
+
+  # Company contact info
+  - source: customFields.email
+    target: email
+    direction: crm_to_cc
+
+  - source: customFields.tel1
+    target: tel1
+    direction: crm_to_cc
+
+  - source: customFields.www
+    target: primaryAddress.contactInfo.www
+    direction: crm_to_cc
+
+  # Primary address
+  - source: customFields.street
+    target: street
+    direction: crm_to_cc
+
+  - source: customFields.city
+    target: city
+    direction: crm_to_cc
+
+  - source: customFields.zipCode
+    target: zipCode
+    direction: crm_to_cc
+
+  - source: customFields.country
+    target: country
+    direction: crm_to_cc
+
+  # Client rating (A/B/C)
+  - source: customFields.rating
+    target: rating
+    direction: crm_to_cc
+
+  # Client state (A_POTENTIAL, B_ACTUAL, C_DEFERRED, D_UNATTRACTIVE)
+  - source: customFields.state
+    target: state
+    direction: crm_to_cc
+
+  # Client role (A_SUBSCRIBER, B_PARTNER, C_SUPPLIER, D_RIVAL)
+  - source: customFields.role
+    target: role
+    direction: crm_to_cc
+
+  # Notes
+  - source: customFields.notice
+    target: notice
+    direction: crm_to_cc
+
+  # Category (enum object -> readable value)
+  - source: customFields.category
+    target: category.value
+    direction: crm_to_cc
+
+  # Contact source (enum object -> readable value)
+  - source: customFields.contactSource
+    target: contactSource.value
+    direction: crm_to_cc
+
+  # Employees count (enum object -> readable value)
+  - source: customFields.employeesNumber
+    target: employeesNumber.value
+    direction: crm_to_cc
+
+  # Turnover bracket (enum object -> readable value)
+  - source: customFields.turnover
+    target: turnover.value
+    direction: crm_to_cc
+
+  # Legal form (enum object -> readable value)
+  - source: customFields.legalForm
+    target: legalForm.value
+    direction: crm_to_cc
+
+  # Bank account
+  - source: customFields.bankAccount
+    target: bankAccount
+    direction: crm_to_cc
+
+  # Databox (datova schranka)
+  - source: customFields.databox
+    target: databox
+    direction: crm_to_cc
+
+  # Social networks
+  - source: customFields.facebook
+    target: socialNetworkContact.facebook
+    direction: crm_to_cc
+
+  - source: customFields.linkedin
+    target: socialNetworkContact.linkedin
+    direction: crm_to_cc
+
+  # CRM detail URL
+  - source: description
+    target: id
+    direction: crm_to_cc
+    transformers:
+      - name: url
+        params: { template: "https://app.raynet.cz/${RAYNET_INSTANCE_NAME}/?view=DetailView&en=Company&ei={value}" }

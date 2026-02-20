@@ -26,6 +26,13 @@ interface CrmAdapterInterface
     /** @return \Generator<int, Account> */
     public function iterateAccounts(?\DateTimeImmutable $since = null): \Generator;
 
+    // Fulltext search
+    /** @return \Generator<int, Contact> */
+    public function searchContacts(string $query): \Generator;
+
+    /** @return \Generator<int, Account> */
+    public function searchAccounts(string $query): \Generator;
+
     // Activities (writable — CC is source-of-truth, CRM receives data)
     public function findActivity(string $id): ?Activity;
 

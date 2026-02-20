@@ -8,6 +8,7 @@ All configuration is done via YAML files. The main config file references per-en
 daktela:
   instance_url: "https://your-instance.daktela.com"
   access_token: "${DAKTELA_ACCESS_TOKEN}"
+  database: "default"
 
 sync:
   batch_size: 100
@@ -37,6 +38,7 @@ webhook:
 |-----|------|-------------|
 | `instance_url` | string | Your Daktela instance URL (e.g., `https://acme.daktela.com`) |
 | `access_token` | string | API access token (create in Daktela: Manage → Users → API tokens) |
+| `database` | string | Database/segment for Contacts & Accounts (e.g., `default`) |
 
 ### `sync`
 | Key | Type | Default | Description |
@@ -108,6 +110,7 @@ $config = (new YamlConfigLoader())->load(__DIR__ . '/config/sync.yaml');
 // Access values
 $config->instanceUrl;     // "https://your-instance.daktela.com"
 $config->accessToken;     // resolved from env var
+$config->database;        // "default"
 $config->batchSize;       // 100
 $config->webhookSecret;   // resolved from env var
 

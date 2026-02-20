@@ -111,6 +111,26 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
         }
     }
 
+    /** @return \Generator<int, Contact> */
+    public function searchContacts(string $query): \Generator
+    {
+        $this->logger->info('Searching Raynet contacts: {query}', ['query' => $query]);
+
+        foreach ($this->client->search($this->config->getPersonEndpoint(), $query) as $record) {
+            yield $this->mapRaynetToContact($record);
+        }
+    }
+
+    /** @return \Generator<int, Account> */
+    public function searchAccounts(string $query): \Generator
+    {
+        $this->logger->info('Searching Raynet accounts: {query}', ['query' => $query]);
+
+        foreach ($this->client->search('company', $query) as $record) {
+            yield $this->mapRaynetToAccount($record);
+        }
+    }
+
     public function findActivity(string $id): ?Activity
     {
         $this->logger->debug('Finding Raynet activity {id}', ['id' => $id]);
@@ -228,29 +248,22 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     {
         $id = isset($record['id']) ? (string) $record['id'] : null;
 
+        // Pass through all raw Raynet fields
+        $data = $record;
+        unset($data['id']);
+
+        // Add convenience aliases for commonly used nested fields
         $firstName = (string) ($record['firstName'] ?? '');
         $lastName = (string) ($record['lastName'] ?? '');
-        $fullName = trim($firstName . ' ' . $lastName);
+        $data['fullName'] = trim($firstName . ' ' . $lastName);
 
-        // contactInfo is at top level in both list and detail endpoints
         $contactInfo = $record['contactInfo'] ?? [];
+        $data['email'] = (string) ($contactInfo['email'] ?? '');
+        $data['tel1'] = (string) ($contactInfo['tel1'] ?? '');
 
-        $data = [
-            'firstName' => $firstName,
-            'lastName' => $lastName,
-            'fullName' => $fullName,
-            'email' => (string) ($contactInfo['email'] ?? ''),
-            'tel1' => (string) ($contactInfo['tel1'] ?? ''),
-        ];
-
-        // Company is under primaryRelationship.company
         $companyId = $record['primaryRelationship']['company']['id'] ?? null;
         if ($companyId !== null) {
             $data['company_id'] = (string) $companyId;
-        }
-
-        if (isset($record['customFields']) && is_array($record['customFields'])) {
-            $data['customFields'] = $record['customFields'];
         }
 
         return new Contact($id, $data);
@@ -263,23 +276,20 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     {
         $id = isset($record['id']) ? (string) $record['id'] : null;
 
+        // Pass through all raw Raynet fields
+        $data = $record;
+        unset($data['id']);
+
+        // Add convenience aliases for commonly used nested fields
         $contactInfo = $record['primaryAddress']['contactInfo'] ?? [];
         $address = $record['primaryAddress']['address'] ?? [];
 
-        $data = [
-            'name' => (string) ($record['name'] ?? ''),
-            'regNumber' => (string) ($record['regNumber'] ?? ''),
-            'email' => (string) ($contactInfo['email'] ?? ''),
-            'tel1' => (string) ($contactInfo['tel1'] ?? ''),
-            'street' => (string) ($address['street'] ?? ''),
-            'city' => (string) ($address['city'] ?? ''),
-            'zipCode' => (string) ($address['zipCode'] ?? ''),
-            'country' => (string) ($address['country'] ?? ''),
-        ];
-
-        if (isset($record['customFields']) && is_array($record['customFields'])) {
-            $data['customFields'] = $record['customFields'];
-        }
+        $data['email'] = (string) ($contactInfo['email'] ?? '');
+        $data['tel1'] = (string) ($contactInfo['tel1'] ?? '');
+        $data['street'] = (string) ($address['street'] ?? '');
+        $data['city'] = (string) ($address['city'] ?? '');
+        $data['zipCode'] = (string) ($address['zipCode'] ?? '');
+        $data['country'] = (string) ($address['country'] ?? '');
 
         return new Account($id, $data);
     }

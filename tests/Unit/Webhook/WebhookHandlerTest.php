@@ -104,6 +104,7 @@ final class WebhookHandlerTest extends TestCase
         $config = new SyncConfiguration(
             instanceUrl: 'https://test.daktela.com',
             accessToken: 'test-token',
+            database: 'test-db',
             batchSize: 100,
             entities: [
                 'contact' => new EntitySyncConfig(true, SyncDirection::CrmToCc, 'contacts.yaml'),

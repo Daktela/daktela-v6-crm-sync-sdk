@@ -16,6 +16,7 @@ final class DaktelaAdapterTest extends TestCase
         $adapter = new DaktelaAdapter(
             'https://test.daktela.com',
             'test-token',
+            'test-db',
             new NullLogger(),
         );
 
@@ -27,6 +28,7 @@ final class DaktelaAdapterTest extends TestCase
         $adapter = new DaktelaAdapter(
             'https://test.daktela.com',
             'test-token',
+            'test-db',
             new NullLogger(),
         );
 

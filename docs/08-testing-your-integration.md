@@ -271,6 +271,7 @@ For integration tests against a real Daktela instance:
 $adapter = new DaktelaAdapter(
     getenv('DAKTELA_INSTANCE_URL'),
     getenv('DAKTELA_ACCESS_TOKEN'),
+    getenv('DAKTELA_DATABASE') ?: 'default',
     new NullLogger(),
 );
 
@@ -318,6 +319,7 @@ private function createConfig(): SyncConfiguration
     return new SyncConfiguration(
         instanceUrl: 'https://test.daktela.com',
         accessToken: 'test-token',
+        database: 'test-db',
         batchSize: 100,
         entities: [
             'contact' => new EntitySyncConfig(true, SyncDirection::CrmToCc, 'contacts.yaml'),

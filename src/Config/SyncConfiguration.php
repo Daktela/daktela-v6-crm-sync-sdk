@@ -15,6 +15,7 @@ final class SyncConfiguration
     public function __construct(
         public readonly string $instanceUrl,
         public readonly string $accessToken,
+        public readonly string $database,
         public readonly int $batchSize,
         public readonly array $entities,
         public readonly array $mappings,

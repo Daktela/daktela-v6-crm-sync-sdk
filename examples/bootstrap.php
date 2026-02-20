@@ -40,6 +40,7 @@ $config = (new YamlConfigLoader())->load($configPath);
 $ccAdapter = new DaktelaAdapter(
     $config->instanceUrl,
     $config->accessToken,
+    $config->database,
     $logger,
 );
 

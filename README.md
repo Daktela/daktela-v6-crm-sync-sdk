@@ -54,7 +54,7 @@ use Psr\Log\NullLogger;
 $config = (new YamlConfigLoader())->load('config/sync.yaml');
 $logger = new NullLogger();
 
-$ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $logger);
+$ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $config->database, $logger);
 $crmAdapter = new YourCrmAdapter(/* ... */);
 
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger);

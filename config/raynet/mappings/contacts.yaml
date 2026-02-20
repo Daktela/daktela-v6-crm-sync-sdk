@@ -24,19 +24,93 @@ mappings:
     target: lastName
     direction: crm_to_cc
 
-  # Email as custom field (wrapped in array)
+  # Academic titles
+  - source: customFields.titleBefore
+    target: titleBefore
+    direction: crm_to_cc
+
+  - source: customFields.titleAfter
+    target: titleAfter
+    direction: crm_to_cc
+
+  # Salutation
+  - source: customFields.salutation
+    target: salutation
+    direction: crm_to_cc
+
+  # Primary email (wrapped in array for Daktela)
   - source: customFields.email
     target: email
     direction: crm_to_cc
     transformers:
       - name: wrap_array
 
-  # Phone as custom field (wrapped in array)
+  # Secondary email
+  - source: customFields.email2
+    target: contactInfo.email2
+    direction: crm_to_cc
+    transformers:
+      - name: wrap_array
+
+  # Primary phone (wrapped in array for Daktela)
   - source: customFields.number
     target: tel1
     direction: crm_to_cc
     transformers:
       - name: wrap_array
+
+  # Secondary phone
+  - source: customFields.number2
+    target: contactInfo.tel2
+    direction: crm_to_cc
+    transformers:
+      - name: wrap_array
+
+  # Website
+  - source: customFields.www
+    target: contactInfo.www
+    direction: crm_to_cc
+
+  # Birthday
+  - source: customFields.birthday
+    target: birthday
+    direction: crm_to_cc
+
+  # Notes
+  - source: customFields.notice
+    target: notice
+    direction: crm_to_cc
+
+  # Category (enum object -> readable value)
+  - source: customFields.category
+    target: category.value
+    direction: crm_to_cc
+
+  # Contact source (enum object -> readable value)
+  - source: customFields.contactSource
+    target: contactSource.value
+    direction: crm_to_cc
+
+  # Social networks
+  - source: customFields.facebook
+    target: socialNetworkContact.facebook
+    direction: crm_to_cc
+
+  - source: customFields.linkedin
+    target: socialNetworkContact.linkedin
+    direction: crm_to_cc
+
+  - source: customFields.twitter
+    target: socialNetworkContact.twitter
+    direction: crm_to_cc
+
+  - source: customFields.instagram
+    target: socialNetworkContact.instagram
+    direction: crm_to_cc
+
+  - source: customFields.skype
+    target: socialNetworkContact.skype
+    direction: crm_to_cc
 
   # CRM detail URL
   - source: description

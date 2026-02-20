@@ -1,6 +1,7 @@
 daktela:
   instance_url: "https://your-instance.daktela.com"
   access_token: "${DAKTELA_ACCESS_TOKEN}"
+  database: "default"
 
 sync:
   batch_size: 100
