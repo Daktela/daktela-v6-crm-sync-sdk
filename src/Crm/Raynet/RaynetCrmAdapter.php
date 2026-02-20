@@ -73,9 +73,11 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     /** @return \Generator<int, Contact> */
     public function iterateContacts(?\DateTimeImmutable $since = null): \Generator
     {
-        $this->logger->info('Iterating Raynet contacts');
+        $this->logger->info('Iterating Raynet contacts', ['since' => $since?->format('c')]);
 
-        foreach ($this->client->iterate($this->config->getPersonEndpoint()) as $record) {
+        $filters = $this->buildSinceFilter($since);
+
+        foreach ($this->client->iterate($this->config->getPersonEndpoint(), filters: $filters) as $record) {
             yield $this->mapRaynetToContact($record);
         }
     }
@@ -107,9 +109,11 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     /** @return \Generator<int, Account> */
     public function iterateAccounts(?\DateTimeImmutable $since = null): \Generator
     {
-        $this->logger->info('Iterating Raynet accounts');
+        $this->logger->info('Iterating Raynet accounts', ['since' => $since?->format('c')]);
 
-        foreach ($this->client->iterate('company') as $record) {
+        $filters = $this->buildSinceFilter($since);
+
+        foreach ($this->client->iterate('company', filters: $filters) as $record) {
             yield $this->mapRaynetToAccount($record);
         }
     }
@@ -328,6 +332,18 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
             $this->personCompanyCache[$personId] = null;
             return null;
         }
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function buildSinceFilter(?\DateTimeImmutable $since): array
+    {
+        if ($since === null) {
+            return [];
+        }
+
+        return ['rowInfo.updatedAt[GTE]' => $since->format('Y-m-d H:i:s')];
     }
 
     private function resolveActivityEndpoint(Activity $activity): string

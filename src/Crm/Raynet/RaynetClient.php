@@ -77,17 +77,18 @@ class RaynetClient
     }
 
     /**
+     * @param array<string, string> $filters
      * @return \Generator<int, array<string, mixed>>
      */
-    public function iterate(string $entity, int $limit = 100): \Generator
+    public function iterate(string $entity, int $limit = 100, array $filters = []): \Generator
     {
         $offset = 0;
 
         do {
-            $response = $this->get($entity . '/', [
+            $response = $this->get($entity . '/', array_merge($filters, [
                 'offset' => $offset,
                 'limit' => $limit,
-            ]);
+            ]));
 
             $data = $response['data'] ?? [];
             $totalCount = $response['totalCount'] ?? 0;
