@@ -1,0 +1,384 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+// Find autoloader — works from vendor/bin symlink or direct execution
+(static function (): void {
+    $candidates = [
+        __DIR__ . '/../vendor/autoload.php',       // direct execution
+        __DIR__ . '/../../../autoload.php',         // installed as dependency
+    ];
+    foreach ($candidates as $file) {
+        if (is_file($file)) {
+            require $file;
+            return;
+        }
+    }
+    fwrite(STDERR, "Could not find Composer autoloader. Run 'composer install' first.\n");
+    exit(1);
+})();
+
+use Daktela\CrmSync\Config\YamlConfigLoader;
+use Daktela\CrmSync\Exception\ConfigurationException;
+
+// ── Color helpers ───────────────────────────────────────────────────────
+
+$isTty = function_exists('posix_isatty') && posix_isatty(STDOUT);
+
+function color(string $text, string $code): string
+{
+    global $isTty;
+    return $isTty ? "\033[{$code}m{$text}\033[0m" : $text;
+}
+
+function bold(string $text): string { return color($text, '1'); }
+function green(string $text): string { return color($text, '32'); }
+function red(string $text): string { return color($text, '31'); }
+function yellow(string $text): string { return color($text, '33'); }
+function dim(string $text): string { return color($text, '2'); }
+function cyan(string $text): string { return color($text, '36'); }
+
+// ── Argv parsing ────────────────────────────────────────────────────────
+
+function parseArgv(array $argv): array
+{
+    $options = [
+        'config' => null,
+        'json' => false,
+        'help' => false,
+    ];
+
+    $i = 1;
+    $count = count($argv);
+    while ($i < $count) {
+        $arg = $argv[$i];
+        if ($arg === '-c' || $arg === '--config') {
+            $options['config'] = $argv[++$i] ?? null;
+        } elseif ($arg === '--json') {
+            $options['json'] = true;
+        } elseif ($arg === '-h' || $arg === '--help') {
+            $options['help'] = true;
+        } elseif (str_starts_with($arg, '-')) {
+            fwrite(STDERR, "Unknown option: {$arg}\n");
+            exit(1);
+        }
+        $i++;
+    }
+
+    return $options;
+}
+
+// ── Help ────────────────────────────────────────────────────────────────
+
+function showHelp(): void
+{
+    $usage = <<<'HELP'
+    Config View — Display current sync configuration
+
+    Usage: bin/config-view [options]
+
+    Loads and displays the full sync configuration including Daktela
+    connection, entity sync settings, and field mappings for each entity.
+
+    Options:
+      -c, --config <path>  Config file path (default: SYNC_CONFIG_PATH env
+                            or config/sync.yaml)
+      --json               Output as JSON
+      -h, --help           Show this help message
+
+    HELP;
+    echo $usage;
+}
+
+// ── Config resolution ───────────────────────────────────────────────────
+
+function resolveConfigPath(?string $explicit): string
+{
+    if ($explicit !== null) {
+        return $explicit;
+    }
+
+    $envPath = getenv('SYNC_CONFIG_PATH');
+    if ($envPath !== false && $envPath !== '') {
+        return $envPath;
+    }
+
+    $candidates = [
+        'config/sync.yaml',
+        'config/raynet/sync.yaml',
+    ];
+    foreach ($candidates as $candidate) {
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+
+// ── Mask sensitive values ───────────────────────────────────────────────
+
+function mask(string $value): string
+{
+    if ($value === '') {
+        return dim('(empty)');
+    }
+
+    $len = strlen($value);
+    if ($len <= 8) {
+        return str_repeat('*', $len);
+    }
+
+    return substr($value, 0, 4) . str_repeat('*', $len - 8) . substr($value, -4);
+}
+
+// ── Output helpers ──────────────────────────────────────────────────────
+
+function outputJson(mixed $data): void
+{
+    echo json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . "\n";
+}
+
+function printSection(string $title): void
+{
+    echo "\n" . bold($title) . "\n";
+    echo dim(str_repeat('─', strlen($title) + 4)) . "\n";
+}
+
+function printKeyValue(string $key, string $value, int $keyWidth = 20): void
+{
+    echo '  ' . dim(str_pad($key, $keyWidth)) . '  ' . $value . "\n";
+}
+
+// ── Display functions ───────────────────────────────────────────────────
+
+function displayConfig(
+    string $configPath,
+    \Daktela\CrmSync\Config\SyncConfiguration $config,
+): void {
+    echo bold("Sync Configuration") . dim(" — {$configPath}") . "\n";
+
+    // Daktela connection
+    printSection('Daktela');
+    printKeyValue('Instance URL', $config->instanceUrl ?: dim('(empty)'));
+    printKeyValue('Access Token', mask($config->accessToken));
+    printKeyValue('Database', $config->database ?: dim('(empty)'));
+
+    // Sync settings
+    printSection('Sync Settings');
+    printKeyValue('Batch Size', (string) $config->batchSize);
+    printKeyValue('Webhook Secret', $config->webhookSecret !== '' ? mask($config->webhookSecret) : dim('(none)'));
+
+    // Entities
+    printSection('Entities');
+
+    if ($config->entities === []) {
+        echo '  ' . dim('(no entities configured)') . "\n";
+        return;
+    }
+
+    foreach ($config->entities as $entityType => $entityConfig) {
+        $status = $entityConfig->enabled ? green('enabled') : red('disabled');
+        $direction = formatDirection($entityConfig->direction->value);
+
+        echo "\n  " . bold($entityType) . '  ' . $status . '  ' . $direction . "\n";
+
+        printKeyValue('Mapping File', $entityConfig->mappingFile ?: dim('(none)'), 16);
+
+        if ($entityConfig->activityTypes !== []) {
+            $types = implode(', ', array_map(
+                static fn ($t) => cyan($t->value),
+                $entityConfig->activityTypes,
+            ));
+            printKeyValue('Activity Types', $types, 16);
+        }
+
+        // Show field mappings
+        $collection = $config->getMapping($entityType);
+        if ($collection !== null && $collection->mappings !== []) {
+            printKeyValue('Lookup Field', cyan($collection->lookupField), 16);
+            echo "\n";
+            displayMappings($collection->mappings, $entityConfig->direction->value);
+        }
+    }
+}
+
+function formatDirection(string $direction): string
+{
+    return match ($direction) {
+        'crm_to_cc' => dim('CRM') . ' → ' . bold('CC'),
+        'cc_to_crm' => bold('CC') . ' → ' . dim('CRM'),
+        'bidirectional' => bold('CC') . ' ↔ ' . bold('CRM'),
+        default => $direction,
+    };
+}
+
+/** @param \Daktela\CrmSync\Mapping\FieldMapping[] $mappings */
+function displayMappings(array $mappings, string $entityDirection): void
+{
+    // Column headers depend on direction
+    if ($entityDirection === 'crm_to_cc') {
+        $leftLabel = 'CRM Field (source)';
+        $rightLabel = 'Daktela Field (target)';
+    } elseif ($entityDirection === 'cc_to_crm') {
+        $leftLabel = 'Daktela Field (source)';
+        $rightLabel = 'CRM Field (target)';
+    } else {
+        $leftLabel = 'CC Field';
+        $rightLabel = 'CRM Field';
+    }
+
+    // Build rows
+    $rows = [];
+    foreach ($mappings as $mapping) {
+        if ($entityDirection === 'crm_to_cc') {
+            $left = $mapping->target;
+            $right = $mapping->source;
+        } else {
+            $left = $mapping->source;
+            $right = $mapping->target;
+        }
+
+        $extras = [];
+        if ($mapping->transformers !== []) {
+            $names = array_map(static fn ($t) => $t['name'], $mapping->transformers);
+            $extras[] = cyan(implode(' | ', $names));
+        }
+        if ($mapping->relation !== null) {
+            $extras[] = yellow('relation:' . $mapping->relation->entity);
+        }
+        if ($mapping->multiValue !== null) {
+            $extras[] = yellow('multi:' . $mapping->multiValue->strategy->value);
+        }
+        if ($mapping->append) {
+            $extras[] = yellow('append');
+        }
+        if ($mapping->direction->value !== $entityDirection && $mapping->direction->value !== 'bidirectional') {
+            $extras[] = dim('(' . $mapping->direction->value . ')');
+        }
+
+        $rows[] = [
+            'left' => $left,
+            'right' => $right,
+            'extra' => implode('  ', $extras),
+        ];
+    }
+
+    // Calculate column widths
+    $leftWidth = max(strlen($leftLabel), ...array_map(static fn ($r) => strlen($r['left']), $rows));
+    $rightWidth = max(strlen($rightLabel), ...array_map(static fn ($r) => strlen($r['right']), $rows));
+
+    // Header
+    echo '    ' . bold(str_pad($leftLabel, $leftWidth))
+        . '  ' . dim('→') . '  '
+        . bold(str_pad($rightLabel, $rightWidth))
+        . '  ' . bold('Options') . "\n";
+    echo '    ' . dim(str_repeat('─', $leftWidth))
+        . '  ' . dim('─') . '  '
+        . dim(str_repeat('─', $rightWidth))
+        . '  ' . dim(str_repeat('─', 20)) . "\n";
+
+    // Rows
+    foreach ($rows as $row) {
+        echo '    ' . str_pad($row['left'], $leftWidth)
+            . '  ' . dim('→') . '  '
+            . str_pad($row['right'], $rightWidth)
+            . '  ' . $row['extra'] . "\n";
+    }
+}
+
+function buildJsonOutput(
+    string $configPath,
+    \Daktela\CrmSync\Config\SyncConfiguration $config,
+): array {
+    $entities = [];
+    foreach ($config->entities as $entityType => $entityConfig) {
+        $mappingData = [];
+        $collection = $config->getMapping($entityType);
+        if ($collection !== null) {
+            foreach ($collection->mappings as $mapping) {
+                $m = [
+                    'source' => $mapping->source,
+                    'target' => $mapping->target,
+                    'direction' => $mapping->direction->value,
+                ];
+                if ($mapping->transformers !== []) {
+                    $m['transformers'] = array_map(static fn ($t) => $t['name'], $mapping->transformers);
+                }
+                if ($mapping->relation !== null) {
+                    $m['relation'] = [
+                        'entity' => $mapping->relation->entity,
+                        'resolve_from' => $mapping->relation->resolveFrom,
+                        'resolve_to' => $mapping->relation->resolveTo,
+                    ];
+                }
+                if ($mapping->multiValue !== null) {
+                    $m['multi_value'] = $mapping->multiValue->strategy->value;
+                }
+                if ($mapping->append) {
+                    $m['append'] = true;
+                }
+                $mappingData[] = $m;
+            }
+        }
+
+        $entities[$entityType] = [
+            'enabled' => $entityConfig->enabled,
+            'direction' => $entityConfig->direction->value,
+            'mapping_file' => $entityConfig->mappingFile,
+            'activity_types' => array_map(static fn ($t) => $t->value, $entityConfig->activityTypes),
+            'lookup_field' => $collection?->lookupField,
+            'mappings' => $mappingData,
+        ];
+    }
+
+    return [
+        'config_path' => $configPath,
+        'daktela' => [
+            'instance_url' => $config->instanceUrl,
+            'database' => $config->database,
+        ],
+        'sync' => [
+            'batch_size' => $config->batchSize,
+        ],
+        'webhook' => [
+            'secret_configured' => $config->webhookSecret !== '',
+        ],
+        'entities' => $entities,
+    ];
+}
+
+// ── Main ────────────────────────────────────────────────────────────────
+
+$opts = parseArgv($argv);
+
+if ($opts['help']) {
+    showHelp();
+    exit(0);
+}
+
+$configPath = resolveConfigPath($opts['config']);
+
+if ($configPath === '' || !is_file($configPath)) {
+    fwrite(STDERR, red("Config file not found" . ($configPath !== '' ? ": {$configPath}" : '')) . "\n");
+    fwrite(STDERR, "Provide a config file:\n");
+    fwrite(STDERR, "  bin/config-view --config path/to/sync.yaml\n");
+    fwrite(STDERR, "  SYNC_CONFIG_PATH=path/to/sync.yaml bin/config-view\n");
+    exit(1);
+}
+
+try {
+    $loader = new YamlConfigLoader();
+    $config = $loader->load($configPath);
+} catch (ConfigurationException $e) {
+    fwrite(STDERR, red("Configuration error: " . $e->getMessage()) . "\n");
+    exit(1);
+}
+
+if ($opts['json']) {
+    outputJson(buildJsonOutput($configPath, $config));
+} else {
+    displayConfig($configPath, $config);
+    echo "\n";
+}

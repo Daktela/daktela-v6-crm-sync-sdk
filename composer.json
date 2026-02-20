@@ -37,7 +37,7 @@
             "Daktela\\CrmSync\\Tests\\": "tests/"
         }
     },
-    "bin": ["bin/crm-inspect"],
+    "bin": ["bin/crm-inspect", "bin/config-view"],
     "config": {
         "sort-packages": true
     },
