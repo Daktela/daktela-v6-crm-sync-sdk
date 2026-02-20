@@ -213,13 +213,12 @@ When your contacts reference accounts, make sure `iterateAccounts()` includes th
 
 ```yaml
 # contacts.yaml
-- source: account
-  target: company_id       # Your adapter must provide this field
-  direction: crm_to_cc
+- cc_field: account
+  crm_field: company_id       # Your adapter must provide this field
   relation:
     entity: account
-    resolve_from: id       # Your adapter's Account must have this field
-    resolve_to: name       # Maps to Daktela account name
+    resolve_from: id           # Your adapter's Account must have this field
+    resolve_to: name           # Maps to Daktela account name
 ```
 
 Your `iterateAccounts()` must yield accounts that include both the `id` and the CRM-side field that maps to the Daktela `name` (typically `external_id`).
@@ -258,17 +257,15 @@ When syncing between systems, prefix external IDs to avoid collisions with IDs f
 
 ```yaml
 # Contacts: CRM → Daktela
-- source: name
-  target: id
-  direction: crm_to_cc
+- cc_field: name
+  crm_field: id
   transformers:
     - name: prefix
       params: { value: "raynet_person_" }
 
 # Activities: Daktela → CRM (strip prefix to get raw CRM ID)
-- source: contact_name
-  target: contactPersonId
-  direction: cc_to_crm
+- cc_field: contact_name
+  crm_field: contactPersonId
   transformers:
     - name: strip_prefix
       params: { value: "raynet_person_" }

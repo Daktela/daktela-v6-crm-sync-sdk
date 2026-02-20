@@ -34,6 +34,9 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
 
     private readonly OwnerResolver $ownerResolver;
 
+    /** @var array<int, int|null> */
+    private array $personCompanyCache = [];
+
     public function __construct(
         private readonly RaynetClient $client,
         private readonly RaynetConfiguration $config,
@@ -300,21 +303,29 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
 
     private function resolvePersonCompany(int $personId): ?int
     {
+        if (array_key_exists($personId, $this->personCompanyCache)) {
+            return $this->personCompanyCache[$personId];
+        }
+
         try {
             $record = $this->client->find($this->config->getPersonEndpoint(), $personId);
             if ($record === null) {
+                $this->personCompanyCache[$personId] = null;
                 return null;
             }
 
             $companyId = $record['primaryRelationship']['company']['id'] ?? null;
+            $result = $companyId !== null ? (int) $companyId : null;
 
-            return $companyId !== null ? (int) $companyId : null;
+            $this->personCompanyCache[$personId] = $result;
+            return $result;
         } catch (\Throwable $e) {
             $this->logger->warning('Failed to resolve company for person {id}', [
                 'id' => $personId,
                 'error' => $e->getMessage(),
             ]);
 
+            $this->personCompanyCache[$personId] = null;
             return null;
         }
     }

@@ -63,21 +63,17 @@ Create `config/mappings/contacts.yaml`:
 entity: contact
 lookup_field: email
 mappings:
-  - source: title
-    target: full_name
-    direction: crm_to_cc
-  - source: email
-    target: email
-    direction: crm_to_cc
-  - source: number
-    target: phone
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: full_name
+  - cc_field: email
+    crm_field: email
+  - cc_field: number
+    crm_field: phone
     transformers:
       - name: phone_normalize
         params: { format: e164 }
-  - source: account
-    target: company_id
-    direction: crm_to_cc
+  - cc_field: account
+    crm_field: company_id
     relation:
       entity: account
       resolve_from: id
@@ -90,12 +86,10 @@ Create `config/mappings/accounts.yaml`:
 entity: account
 lookup_field: name
 mappings:
-  - source: title
-    target: company_name
-    direction: crm_to_cc
-  - source: name
-    target: external_id
-    direction: crm_to_cc
+  - cc_field: title
+    crm_field: company_name
+  - cc_field: name
+    crm_field: external_id
 ```
 
 Create `config/mappings/activities.yaml`:
@@ -104,15 +98,12 @@ Create `config/mappings/activities.yaml`:
 entity: activity
 lookup_field: name
 mappings:
-  - source: name
-    target: external_id
-    direction: cc_to_crm
-  - source: title
-    target: subject
-    direction: cc_to_crm
-  - source: time_start
-    target: start_time
-    direction: cc_to_crm
+  - cc_field: name
+    crm_field: external_id
+  - cc_field: title
+    crm_field: subject
+  - cc_field: time_start
+    crm_field: start_time
     transformers:
       - name: date_format
         params: { from: "Y-m-d H:i:s", to: "c" }

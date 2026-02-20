@@ -157,7 +157,7 @@ class RaynetClient
     public function findByExtId(string $entity, string $extId): ?array
     {
         try {
-            $response = $this->get(sprintf('%s/ext/%s/', $entity, $extId));
+            $response = $this->get(sprintf('%s/ext/%s/', $entity, rawurlencode($extId)));
         } catch (RaynetApiException $e) {
             if (str_contains($e->getMessage(), '404')) {
                 return null;

@@ -134,12 +134,10 @@ Minimal example:
 entity: contact
 lookup_field: email
 mappings:
-  - source: title           # Daktela field
-    target: full_name        # CRM field
-    direction: crm_to_cc
-  - source: email
-    target: email
-    direction: crm_to_cc
+  - cc_field: title           # Daktela field
+    crm_field: full_name      # CRM field
+  - cc_field: email
+    crm_field: email
 ```
 
 Extended with all features:
@@ -148,22 +146,19 @@ Extended with all features:
 entity: contact
 lookup_field: email
 mappings:
-  - source: number
-    target: phone
-    direction: crm_to_cc
+  - cc_field: number
+    crm_field: phone
     transformers:
       - name: phone_normalize
         params: { format: e164 }
-  - source: account
-    target: company_id
-    direction: crm_to_cc
+  - cc_field: account
+    crm_field: company_id
     relation:
       entity: account
       resolve_from: id
       resolve_to: name
-  - source: customFields.tags
-    target: tags
-    direction: crm_to_cc
+  - cc_field: customFields.tags
+    crm_field: tags
     multi_value:
       strategy: split
       separator: ","

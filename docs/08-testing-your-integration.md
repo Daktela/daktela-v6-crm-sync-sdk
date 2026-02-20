@@ -70,8 +70,8 @@ use Daktela\CrmSync\Sync\SyncDirection;
 $mapper = new FieldMapper(TransformerRegistry::withDefaults());
 
 $collection = new MappingCollection('contact', 'email', [
-    new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-    new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+    new FieldMapping('title', 'full_name'),
+    new FieldMapping('email', 'email'),
 ]);
 
 // CRM entity (source for CrmToCc direction)
@@ -119,9 +119,8 @@ $mapper = new FieldMapper(TransformerRegistry::withDefaults());
 
 $collection = new MappingCollection('contact', 'email', [
     new FieldMapping(
-        source: 'account',
-        target: 'company_id',
-        direction: SyncDirection::CrmToCc,
+        ccField: 'account',
+        crmField: 'company_id',
         relation: new RelationConfig(
             entity: 'account',
             resolveFrom: 'id',
@@ -236,10 +235,7 @@ $collection = $loader->load(__DIR__ . '/config/mappings/contacts.yaml');
 
 self::assertSame('contact', $collection->entityType);
 self::assertSame('email', $collection->lookupField);
-
-// Check direction filtering works
-$crmToCc = $collection->forDirection(SyncDirection::CrmToCc);
-self::assertGreaterThan(0, count($crmToCc->mappings));
+self::assertGreaterThan(0, count($collection->mappings));
 ```
 
 ## Testing Custom Transformers
@@ -296,24 +292,23 @@ A reusable helper for building test configs:
 private function createConfig(): SyncConfiguration
 {
     $contactMapping = new MappingCollection('contact', 'email', [
-        new FieldMapping('title', 'full_name', SyncDirection::CrmToCc),
-        new FieldMapping('email', 'email', SyncDirection::CrmToCc),
+        new FieldMapping('title', 'full_name'),
+        new FieldMapping('email', 'email'),
         new FieldMapping(
-            source: 'account',
-            target: 'company_id',
-            direction: SyncDirection::CrmToCc,
+            ccField: 'account',
+            crmField: 'company_id',
             relation: new RelationConfig('account', 'id', 'name'),
         ),
     ]);
 
     $accountMapping = new MappingCollection('account', 'name', [
-        new FieldMapping('title', 'company_name', SyncDirection::CrmToCc),
-        new FieldMapping('name', 'external_id', SyncDirection::CrmToCc),
+        new FieldMapping('title', 'company_name'),
+        new FieldMapping('name', 'external_id'),
     ]);
 
     $activityMapping = new MappingCollection('activity', 'name', [
-        new FieldMapping('name', 'external_id', SyncDirection::CcToCrm),
-        new FieldMapping('title', 'subject', SyncDirection::CcToCrm),
+        new FieldMapping('name', 'external_id'),
+        new FieldMapping('title', 'subject'),
     ]);
 
     return new SyncConfiguration(

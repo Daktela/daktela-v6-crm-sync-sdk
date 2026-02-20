@@ -11,7 +11,9 @@ use Daktela\CrmSync\Entity\Account;
 use Daktela\CrmSync\Entity\Activity;
 use Daktela\CrmSync\Entity\ActivityType;
 use Daktela\CrmSync\Entity\Contact;
+use Daktela\CrmSync\Entity\EntityInterface;
 use Daktela\CrmSync\Mapping\FieldMapper;
+use Daktela\CrmSync\Mapping\MappingCollection;
 use Daktela\CrmSync\Sync\Result\RecordResult;
 use Daktela\CrmSync\Sync\Result\SyncResult;
 use Daktela\CrmSync\Sync\Result\SyncStatus;
@@ -46,7 +48,8 @@ final class WebhookSync
                 return $result;
             }
 
-            $mapped = $this->fieldMapper->map($contact, $mapping, SyncDirection::CrmToCc);
+            $relationMaps = $this->buildRelationMapsForEntity($contact, $mapping);
+            $mapped = $this->fieldMapper->map($contact, $mapping, SyncDirection::CrmToCc, $relationMaps);
             $synced = $this->ccAdapter->upsertContact($mapping->lookupField, Contact::fromArray($mapped));
 
             $result->addRecord(new RecordResult('contact', $id, $synced->getId(), SyncStatus::Updated));
@@ -134,5 +137,72 @@ final class WebhookSync
 
         $result->finish();
         return $result;
+    }
+
+    /**
+     * Builds a targeted relation map for a single entity by looking up only
+     * the specific related entities it references (e.g., its account).
+     *
+     * @return array<string, array<string, string>>
+     */
+    private function buildRelationMapsForEntity(EntityInterface $entity, MappingCollection $entityMapping): array
+    {
+        $relationMaps = [];
+
+        foreach ($entityMapping->mappings as $mapping) {
+            if ($mapping->relation === null) {
+                continue;
+            }
+
+            $relation = $mapping->relation;
+
+            $crmValue = $entity->get($mapping->crmField);
+            if ($crmValue === null || (string) $crmValue === '') {
+                continue;
+            }
+
+            $relatedMapping = $this->config->getMapping($relation->entity);
+            if ($relatedMapping === null) {
+                continue;
+            }
+
+            $resolveToSourceField = null;
+            foreach ($relatedMapping->mappings as $fm) {
+                if ($fm->ccField === $relation->resolveTo) {
+                    $resolveToSourceField = $fm->crmField;
+                    break;
+                }
+            }
+
+            if ($resolveToSourceField === null) {
+                continue;
+            }
+
+            $relatedEntity = $this->findRelatedEntity($relation->entity, $relation->resolveFrom, (string) $crmValue);
+            if ($relatedEntity === null) {
+                continue;
+            }
+
+            $toValue = $relatedEntity->get($resolveToSourceField);
+            if ($toValue !== null) {
+                $relationMaps[$relation->entity] ??= [];
+                $relationMaps[$relation->entity][(string) $crmValue] = (string) $toValue;
+            }
+        }
+
+        return $relationMaps;
+    }
+
+    private function findRelatedEntity(string $entityType, string $field, string $value): ?EntityInterface
+    {
+        return match ($entityType) {
+            'account' => $field === 'id'
+                ? $this->crmAdapter->findAccount($value)
+                : $this->crmAdapter->findAccountByLookup($field, $value),
+            'contact' => $field === 'id'
+                ? $this->crmAdapter->findContact($value)
+                : $this->crmAdapter->findContactByLookup($field, $value),
+            default => null,
+        };
     }
 }
