@@ -288,4 +288,59 @@ final class FieldMapperTest extends TestCase
         self::assertSame('acme', $result['account']);
         self::assertSame(['vip', 'enterprise'], $result['customFields']['tags']);
     }
+
+    public function testAppendMergesArrays(): void
+    {
+        $collection = new MappingCollection('contact', 'email', [
+            new FieldMapping('customFields.number', 'tel1', SyncDirection::CrmToCc, [
+                ['name' => 'wrap_array', 'params' => []],
+            ]),
+            new FieldMapping('customFields.number', 'tel2', SyncDirection::CrmToCc, [
+                ['name' => 'wrap_array', 'params' => []],
+            ], append: true),
+        ]);
+
+        $entity = Contact::fromArray([
+            'tel1' => '+420111222333',
+            'tel2' => '+420444555666',
+        ]);
+
+        $result = $this->mapper->map($entity, $collection, SyncDirection::CrmToCc);
+
+        self::assertSame(['+420111222333', '+420444555666'], $result['customFields']['number']);
+    }
+
+    public function testAppendSkipsEmptyValues(): void
+    {
+        $collection = new MappingCollection('contact', 'email', [
+            new FieldMapping('customFields.number', 'tel1', SyncDirection::CrmToCc, [
+                ['name' => 'wrap_array', 'params' => []],
+            ]),
+            new FieldMapping('customFields.number', 'tel2', SyncDirection::CrmToCc, [
+                ['name' => 'wrap_array', 'params' => []],
+            ], append: true),
+        ]);
+
+        $entity = Contact::fromArray([
+            'tel1' => '+420111222333',
+            'tel2' => '',
+        ]);
+
+        $result = $this->mapper->map($entity, $collection, SyncDirection::CrmToCc);
+
+        self::assertSame(['+420111222333'], $result['customFields']['number']);
+    }
+
+    public function testAppendToNonExistentKeyCreatesArray(): void
+    {
+        $collection = new MappingCollection('contact', 'email', [
+            new FieldMapping('customFields.tags', 'extra_tag', SyncDirection::CrmToCc, [], append: true),
+        ]);
+
+        $entity = Contact::fromArray(['extra_tag' => 'vip']);
+
+        $result = $this->mapper->map($entity, $collection, SyncDirection::CrmToCc);
+
+        self::assertSame(['vip'], $result['customFields']['tags']);
+    }
 }

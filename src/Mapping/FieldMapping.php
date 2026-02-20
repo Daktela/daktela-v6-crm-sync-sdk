@@ -18,6 +18,7 @@ final readonly class FieldMapping
         public array $transformers = [],
         public ?MultiValueConfig $multiValue = null,
         public ?RelationConfig $relation = null,
+        public bool $append = false,
     ) {
     }
 }

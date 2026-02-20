@@ -45,10 +45,11 @@ mappings:
     transformers:
       - name: wrap_array
 
-  # Secondary email
-  - source: customFields.email2
+  # Secondary email (appended to same Daktela email array)
+  - source: customFields.email
     target: contactInfo.email2
     direction: crm_to_cc
+    append: true
     transformers:
       - name: wrap_array
 
@@ -59,10 +60,11 @@ mappings:
     transformers:
       - name: wrap_array
 
-  # Secondary phone
-  - source: customFields.number2
+  # Secondary phone (appended to same Daktela phone array)
+  - source: customFields.number
     target: contactInfo.tel2
     direction: crm_to_cc
+    append: true
     transformers:
       - name: wrap_array
 

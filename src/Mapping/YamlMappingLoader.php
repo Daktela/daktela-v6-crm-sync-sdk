@@ -146,6 +146,7 @@ final class YamlMappingLoader
             transformers: $transformers,
             multiValue: $multiValue,
             relation: $relation,
+            append: (bool) ($item['append'] ?? false),
         );
     }
 }

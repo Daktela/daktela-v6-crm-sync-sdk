@@ -60,7 +60,11 @@ final class FieldMapper
                 $value = $mapping->multiValue->apply($value);
             }
 
-            $this->setNestedValue($result, $writeField, $value);
+            if ($mapping->append) {
+                $this->appendNestedValue($result, $writeField, $value);
+            } else {
+                $this->setNestedValue($result, $writeField, $value);
+            }
         }
 
         return $result;
@@ -106,6 +110,41 @@ final class FieldMapper
         }
 
         $current[$parts[array_key_last($parts)]] = $value;
+    }
+
+    /**
+     * @param array<string, mixed> $result
+     */
+    private function appendNestedValue(array &$result, string $field, mixed $value): void
+    {
+        $existing = $this->getNestedValue($result, $field);
+
+        $existingArray = is_array($existing) ? $existing : ($existing !== null ? [$existing] : []);
+        $newArray = is_array($value) ? $value : ($value !== null && $value !== '' ? [$value] : []);
+
+        $this->setNestedValue($result, $field, array_merge($existingArray, $newArray));
+    }
+
+    /**
+     * @param array<string, mixed> $data
+     */
+    private function getNestedValue(array $data, string $field): mixed
+    {
+        if (!str_contains($field, '.')) {
+            return $data[$field] ?? null;
+        }
+
+        $parts = explode('.', $field);
+        $current = $data;
+
+        foreach ($parts as $part) {
+            if (!is_array($current) || !array_key_exists($part, $current)) {
+                return null;
+            }
+            $current = $current[$part];
+        }
+
+        return $current;
     }
 
     /**
