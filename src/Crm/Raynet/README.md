@@ -15,6 +15,26 @@ All sync orchestration, field mapping, transformations, and batch processing are
 | Accounts   | Raynet &rarr; Daktela  | Raynet CRM      |
 | Activities | Daktela &rarr; Raynet  | Daktela CC      |
 
+## Quick Start
+
+`SyncEngineFactory` wires everything from a single YAML config:
+
+```php
+use Daktela\CrmSync\Sync\SyncEngineFactory;
+
+$factory = SyncEngineFactory::fromYaml('config/sync.yaml', stateStorePath: 'var/sync-state.json');
+$engine = $factory->getEngine();
+
+$engine->testConnections();
+
+$results = $engine->fullSync();
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
+}
+```
+
+See [`examples/raynet/`](../../../examples/raynet/) for full sync, incremental, single-record, and webhook examples.
+
 ## Configuration
 
 Copy the distribution config files into your project:

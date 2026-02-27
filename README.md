@@ -39,28 +39,7 @@ A universal sync layer between **Daktela Contact Centre V6** and any CRM system.
 composer require daktela/daktela-v6-crm-sync
 ```
 
-## Quick Start (Raynet)
-
-For Raynet CRM, `SyncEngineFactory` wires everything from a single YAML config:
-
-```php
-use Daktela\CrmSync\Sync\SyncEngineFactory;
-
-$factory = SyncEngineFactory::fromYaml('config/sync.yaml', stateStorePath: 'var/sync-state.json');
-$engine = $factory->getEngine();
-
-$engine->testConnections();
-
-$results = $engine->fullSync();
-foreach ($results as $type => $result) {
-    echo $result->getSummary(ucfirst($type)) . "\n";
-}
-// Output: Account: 42 total, 5 created, 10 updated, 25 skipped, 2 failed (1.23s)
-```
-
-See the [Raynet README](src/Crm/Raynet/README.md) and [`examples/raynet/`](examples/raynet/) for full examples.
-
-## Quick Start (Custom CRM Adapter)
+## Quick Start
 
 1. Create your CRM adapter implementing `CrmAdapterInterface`
 2. Configure field mappings in YAML
@@ -80,7 +59,11 @@ $crmAdapter = new YourCrmAdapter(/* ... */);
 
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger);
 $engine->testConnections();
+
 $results = $engine->fullSync();
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
+}
 ```
 
 See [`examples/`](examples/) for full sync, incremental, single-record, and webhook examples.
