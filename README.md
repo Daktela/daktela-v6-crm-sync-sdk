@@ -39,7 +39,28 @@ A universal sync layer between **Daktela Contact Centre V6** and any CRM system.
 composer require daktela/daktela-v6-crm-sync
 ```
 
-## Quick Start
+## Quick Start (Raynet)
+
+For Raynet CRM, `SyncEngineFactory` wires everything from a single YAML config:
+
+```php
+use Daktela\CrmSync\Sync\SyncEngineFactory;
+
+$factory = SyncEngineFactory::fromYaml('config/sync.yaml', stateStorePath: 'var/sync-state.json');
+$engine = $factory->getEngine();
+
+$engine->testConnections();
+
+$results = $engine->fullSync();
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
+}
+// Output: Account: 42 total, 5 created, 10 updated, 25 skipped, 2 failed (1.23s)
+```
+
+See the [Raynet README](src/Crm/Raynet/README.md) and [`examples/raynet/`](examples/raynet/) for full examples.
+
+## Quick Start (Custom CRM Adapter)
 
 1. Create your CRM adapter implementing `CrmAdapterInterface`
 2. Configure field mappings in YAML
@@ -48,20 +69,21 @@ composer require daktela/daktela-v6-crm-sync
 ```php
 use Daktela\CrmSync\Adapter\Daktela\DaktelaAdapter;
 use Daktela\CrmSync\Config\YamlConfigLoader;
+use Daktela\CrmSync\Logging\StderrLogger;
 use Daktela\CrmSync\Sync\SyncEngine;
-use Psr\Log\NullLogger;
 
+$logger = new StderrLogger();
 $config = (new YamlConfigLoader())->load('config/sync.yaml');
-$logger = new NullLogger();
 
 $ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $config->database, $logger);
 $crmAdapter = new YourCrmAdapter(/* ... */);
 
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger);
-$result = $engine->syncContactsBatch();
+$engine->testConnections();
+$results = $engine->fullSync();
 ```
 
-For Raynet CRM specifically, see the [Raynet README](src/Crm/Raynet/README.md) and [`examples/raynet/`](examples/raynet/).
+See [`examples/`](examples/) for full sync, incremental, single-record, and webhook examples.
 
 ## Documentation
 

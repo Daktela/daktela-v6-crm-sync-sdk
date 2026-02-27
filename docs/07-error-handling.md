@@ -137,10 +137,23 @@ echo json_encode($webhookResult->toResponseArray());
 
 ## Logging
 
-The SDK uses PSR-3 logging. Pass any `LoggerInterface` implementation:
+The SDK uses PSR-3 logging. Pass any `LoggerInterface` implementation.
+
+The SDK ships with `StderrLogger` — a simple logger that writes timestamped messages to stderr with `{key}` placeholder interpolation:
 
 ```php
+use Daktela\CrmSync\Logging\StderrLogger;
+
+$logger = new StderrLogger();
+// Output: [2026-02-27 14:30:00] INFO: Syncing contact {id}
+
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger);
+```
+
+`SyncEngineFactory` uses `StderrLogger` by default. Pass your own logger (e.g. Monolog) to override:
+
+```php
+$factory = SyncEngineFactory::fromYaml('config/sync.yaml', logger: $monolog);
 ```
 
 Log levels used:
