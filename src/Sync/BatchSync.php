@@ -335,9 +335,9 @@ final class BatchSync
     }
 
     /**
-     * @return (callable(string, array<string, mixed>): UpsertResult)|null
+     * @return callable(string, array<string, mixed>): UpsertResult
      */
-    private function buildUpsertFn(string $entityType): ?callable
+    private function buildUpsertFn(string $entityType): callable
     {
         return match ($entityType) {
             'account' => fn (string $lookupField, array $data) => $this->ccAdapter->upsertAccount(
@@ -348,7 +348,7 @@ final class BatchSync
                 $lookupField,
                 \Daktela\CrmSync\Entity\Contact::fromArray($data),
             ),
-            default => null,
+            default => throw new \LogicException("Unsupported entity type: {$entityType}"),
         };
     }
 
@@ -390,9 +390,6 @@ final class BatchSync
             }
 
             $upsertFn = $this->buildUpsertFn($entityType);
-            if ($upsertFn === null) {
-                return null;
-            }
 
             return $this->syncEntityToCc(
                 entity: $entity,
