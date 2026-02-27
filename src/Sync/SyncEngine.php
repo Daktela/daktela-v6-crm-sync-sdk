@@ -66,7 +66,14 @@ final class SyncEngine
         // Step 1: Sync accounts first (builds relation maps)
         if ($this->config->isEntityEnabled('account')) {
             $this->logger->info('Full sync: starting accounts');
-            $results['account'] = $this->batchSync->syncAccounts();
+            $this->batchSync->resetOffsets();
+            $accountResult = new SyncResult();
+            do {
+                $batch = $this->batchSync->syncAccounts();
+                $accountResult->merge($batch);
+            } while (!$batch->isExhausted());
+            $accountResult->finish();
+            $results['account'] = $accountResult;
         }
 
         // Step 2: Build relation maps from contact mapping configs
@@ -78,13 +85,27 @@ final class SyncEngine
         // Step 3: Sync contacts (uses relation maps to resolve account references)
         if ($this->config->isEntityEnabled('contact')) {
             $this->logger->info('Full sync: starting contacts');
-            $results['contact'] = $this->batchSync->syncContacts();
+            $this->batchSync->resetOffsets();
+            $contactResult = new SyncResult();
+            do {
+                $batch = $this->batchSync->syncContacts();
+                $contactResult->merge($batch);
+            } while (!$batch->isExhausted());
+            $contactResult->finish();
+            $results['contact'] = $contactResult;
         }
 
         // Step 4: Sync activities
         if ($this->config->isEntityEnabled('activity')) {
             $this->logger->info('Full sync: starting activities');
-            $results['activity'] = $this->batchSync->syncActivities($activityTypes);
+            $this->batchSync->resetOffsets();
+            $activityResult = new SyncResult();
+            do {
+                $batch = $this->batchSync->syncActivities($activityTypes);
+                $activityResult->merge($batch);
+            } while (!$batch->isExhausted());
+            $activityResult->finish();
+            $results['activity'] = $activityResult;
         }
 
         $this->batchSync->setForceFullSync(false);

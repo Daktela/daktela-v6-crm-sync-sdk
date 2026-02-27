@@ -71,13 +71,13 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     }
 
     /** @return \Generator<int, Contact> */
-    public function iterateContacts(?\DateTimeImmutable $since = null): \Generator
+    public function iterateContacts(?\DateTimeImmutable $since = null, int $offset = 0): \Generator
     {
-        $this->logger->info('Iterating Raynet contacts', ['since' => $since?->format('c')]);
+        $this->logger->info('Iterating Raynet contacts', ['since' => $since?->format('c'), 'offset' => $offset]);
 
         $filters = $this->buildSinceFilter($since);
 
-        foreach ($this->client->iterate($this->config->getPersonEndpoint(), filters: $filters) as $record) {
+        foreach ($this->client->iterate($this->config->getPersonEndpoint(), filters: $filters, startOffset: $offset) as $record) {
             yield $this->mapRaynetToContact($record);
         }
     }
@@ -107,13 +107,13 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
     }
 
     /** @return \Generator<int, Account> */
-    public function iterateAccounts(?\DateTimeImmutable $since = null): \Generator
+    public function iterateAccounts(?\DateTimeImmutable $since = null, int $offset = 0): \Generator
     {
-        $this->logger->info('Iterating Raynet accounts', ['since' => $since?->format('c')]);
+        $this->logger->info('Iterating Raynet accounts', ['since' => $since?->format('c'), 'offset' => $offset]);
 
         $filters = $this->buildSinceFilter($since);
 
-        foreach ($this->client->iterate('company', filters: $filters) as $record) {
+        foreach ($this->client->iterate('company', filters: $filters, startOffset: $offset) as $record) {
             yield $this->mapRaynetToAccount($record);
         }
     }

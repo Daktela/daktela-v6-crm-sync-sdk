@@ -80,9 +80,9 @@ class RaynetClient
      * @param array<string, string> $filters
      * @return \Generator<int, array<string, mixed>>
      */
-    public function iterate(string $entity, int $limit = 100, array $filters = []): \Generator
+    public function iterate(string $entity, int $limit = 100, array $filters = [], int $startOffset = 0): \Generator
     {
-        $offset = 0;
+        $offset = $startOffset;
 
         do {
             $response = $this->get($entity . '/', array_merge($filters, [

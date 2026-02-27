@@ -81,7 +81,7 @@ final class FieldMapper
         return $result;
     }
 
-    private function readNestedValue(EntityInterface $entity, string $field): mixed
+    public function readNestedValue(EntityInterface $entity, string $field): mixed
     {
         if (!str_contains($field, '.')) {
             return $entity->get($field);

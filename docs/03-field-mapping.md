@@ -138,7 +138,8 @@ When syncing contacts, you often need to resolve references to other entities. F
 1. During `fullSync()`, accounts are synced first
 2. The engine builds a resolution map: `CRM account.id → Daktela account.name`
 3. When syncing contacts, the mapper sees `company_id = "crm-acc-123"` and resolves it to `account = "acme"` using the map
-4. If a value cannot be resolved, the original value is passed through unchanged
+4. If a referenced entity is missing from the map, the engine auto-fetches it from the CRM and syncs it on-the-fly (with recursion protection)
+5. If a value still cannot be resolved (entity not found in CRM), the original value is passed through unchanged
 
 ### Using fullSync()
 
@@ -152,11 +153,11 @@ $results = $engine->fullSync();
 // $results['activity'] — SyncResult for activities
 ```
 
-If you sync entities individually, you need to sync accounts before contacts:
+Syncing accounts before contacts is still recommended for efficiency, but not strictly required — missing accounts are auto-created on-the-fly:
 
 ```php
-$engine->syncAccountsBatch(); // Must come first
-$engine->syncContactsBatch(); // Can now resolve account references
+$engine->syncAccountsBatch(); // Recommended first for efficiency
+$engine->syncContactsBatch(); // Resolves account references; auto-syncs missing accounts
 ```
 
 ---

@@ -13,6 +13,8 @@ final class SyncResult
 
     private float $endTime = 0;
 
+    private bool $exhausted = true;
+
     public function __construct()
     {
         $this->startTime = microtime(true);
@@ -73,6 +75,25 @@ final class SyncResult
         $end = $this->endTime > 0 ? $this->endTime : microtime(true);
 
         return $end - $this->startTime;
+    }
+
+    public function setExhausted(bool $exhausted): void
+    {
+        $this->exhausted = $exhausted;
+    }
+
+    public function isExhausted(): bool
+    {
+        return $this->exhausted;
+    }
+
+    public function merge(self $other): void
+    {
+        array_push($this->records, ...$other->records);
+        $this->startTime = min($this->startTime, $other->startTime);
+        if ($other->endTime > 0) {
+            $this->endTime = max($this->endTime, $other->endTime);
+        }
     }
 
     private function countByStatus(SyncStatus $status): int
