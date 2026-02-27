@@ -343,7 +343,7 @@ final class RaynetCrmAdapter implements CrmAdapterInterface
             return [];
         }
 
-        return ['rowInfo.updatedAt[GTE]' => $since->format('Y-m-d H:i:s')];
+        return ['rowInfo.updatedAt[GE]' => $since->format('Y-m-d H:i')];
     }
 
     private function resolveActivityEndpoint(Activity $activity): string
