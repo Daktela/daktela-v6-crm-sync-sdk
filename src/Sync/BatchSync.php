@@ -98,7 +98,6 @@ final class BatchSync
         }
 
         $since = $this->resolveSince('contact');
-        $syncStartTime = new \DateTimeImmutable();
         $offset = $this->offsets['contact'] ?? 0;
         $result = new SyncResult();
         $count = 0;
@@ -126,7 +125,6 @@ final class BatchSync
 
         if ($exhausted) {
             $this->offsets['contact'] = 0;
-            $this->saveState('contact', $syncStartTime, $result);
         } else {
             $this->offsets['contact'] = $offset + $count;
         }
@@ -151,7 +149,6 @@ final class BatchSync
         }
 
         $since = $this->resolveSince('account');
-        $syncStartTime = new \DateTimeImmutable();
         $offset = $this->offsets['account'] ?? 0;
         $result = new SyncResult();
         $autoContactResult = new SyncResult();
@@ -190,7 +187,6 @@ final class BatchSync
 
         if ($exhausted) {
             $this->offsets['account'] = 0;
-            $this->saveState('account', $syncStartTime, $result);
         } else {
             $this->offsets['account'] = $offset + $count;
         }
@@ -233,7 +229,6 @@ final class BatchSync
         }
 
         $since = $this->resolveSince('activity');
-        $syncStartTime = new \DateTimeImmutable();
         $offset = $this->offsets['activity'] ?? 0;
         $result = new SyncResult();
         $count = 0;
@@ -257,7 +252,6 @@ final class BatchSync
 
         if ($exhausted) {
             $this->offsets['activity'] = 0;
-            $this->saveState('activity', $syncStartTime, $result);
         } else {
             $this->offsets['activity'] = $offset + $count;
         }
@@ -654,24 +648,6 @@ final class BatchSync
         }
 
         return $this->stateStore->getLastSyncTime($entityType);
-    }
-
-    private function saveState(string $entityType, \DateTimeImmutable $syncStartTime, SyncResult $result): void
-    {
-        if ($this->stateStore === null) {
-            return;
-        }
-
-        if ($result->getFailedCount() > 0) {
-            $this->logger->warning('State not saved for {entityType}: {failedCount} failed records', [
-                'entityType' => $entityType,
-                'failedCount' => $result->getFailedCount(),
-            ]);
-
-            return;
-        }
-
-        $this->stateStore->setLastSyncTime($entityType, $syncStartTime);
     }
 
 }

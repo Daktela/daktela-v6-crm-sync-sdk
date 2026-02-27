@@ -212,17 +212,17 @@ final class SyncEngineTest extends TestCase
 
         $results = $engine->fullSync([ActivityType::Call]);
 
-        self::assertArrayHasKey('account', $results);
-        self::assertArrayHasKey('auto_contact', $results);
-        self::assertArrayHasKey('contact', $results);
-        self::assertArrayHasKey('activity', $results);
-        self::assertSame(1, $results['account']->getTotalCount());
-        self::assertSame(0, $results['auto_contact']->getTotalCount());
-        self::assertSame(1, $results['contact']->getTotalCount());
-        self::assertSame(1, $results['activity']->getTotalCount());
-        self::assertSame(0, $results['account']->getFailedCount());
-        self::assertSame(0, $results['contact']->getFailedCount());
-        self::assertSame(0, $results['activity']->getFailedCount());
+        self::assertNotNull($results->account);
+        self::assertNotNull($results->autoContact);
+        self::assertNotNull($results->contact);
+        self::assertNotNull($results->activity);
+        self::assertSame(1, $results->account->getTotalCount());
+        self::assertSame(0, $results->autoContact->getTotalCount());
+        self::assertSame(1, $results->contact->getTotalCount());
+        self::assertSame(1, $results->activity->getTotalCount());
+        self::assertSame(0, $results->account->getFailedCount());
+        self::assertSame(0, $results->contact->getFailedCount());
+        self::assertSame(0, $results->activity->getFailedCount());
     }
 
     public function testFullSyncResolvesAccountReferences(): void
@@ -260,7 +260,39 @@ final class SyncEngineTest extends TestCase
 
         $results = $engine->fullSync();
 
-        self::assertSame(0, $results['contact']->getFailedCount());
+        self::assertSame(0, $results->contact->getFailedCount());
+    }
+
+    public function testFullSyncToArrayReturnsKeyedResults(): void
+    {
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateAccounts')->willReturnCallback(fn () => $this->arrayToGenerator([
+            Account::fromArray(['id' => 'acc-1', 'company_name' => 'Acme', 'external_id' => 'acme']),
+        ]));
+        $crmAdapter->method('iterateContacts')->willReturnCallback(fn () => $this->arrayToGenerator([]));
+        $ccAdapter->method('iterateActivities')->willReturnCallback(fn () => $this->arrayToGenerator([]));
+
+        $ccAdapter->method('upsertAccount')
+            ->willReturnCallback(fn ($lookup, $account) => new UpsertResult(Account::fromArray(
+                array_merge($account->toArray(), ['id' => 'cc-acc-1']),
+            )));
+
+        $engine = new SyncEngine(
+            $ccAdapter,
+            $crmAdapter,
+            $this->createConfigWithRelations(),
+            new NullLogger(),
+        );
+
+        $results = $engine->fullSync([ActivityType::Call]);
+        $array = $results->toArray();
+
+        self::assertArrayHasKey('account', $array);
+        self::assertArrayHasKey('auto_contact', $array);
+        self::assertArrayHasKey('contact', $array);
+        self::assertArrayHasKey('activity', $array);
     }
 
     public function testFullSyncSkipsDisabledEntities(): void
@@ -286,9 +318,9 @@ final class SyncEngineTest extends TestCase
 
         $results = $engine->fullSync();
 
-        self::assertArrayNotHasKey('account', $results);
-        self::assertArrayNotHasKey('auto_contact', $results);
-        self::assertArrayHasKey('contact', $results);
+        self::assertNull($results->account);
+        self::assertNull($results->autoContact);
+        self::assertNotNull($results->contact);
     }
 
     public function testForceFullSyncBypassesState(): void
@@ -413,6 +445,68 @@ final class SyncEngineTest extends TestCase
         $this->expectException(\RuntimeException::class);
         $this->expectExceptionMessage('Cannot connect to Daktela API');
         $engine->testConnections();
+    }
+
+    public function testSavesTimestampAfterSuccessfulSync(): void
+    {
+        $contacts = [
+            Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']),
+        ];
+
+        $stateStore = $this->createMock(SyncStateStoreInterface::class);
+        $stateStore->method('getLastSyncTime')->willReturn(null);
+        $stateStore->expects(self::once())
+            ->method('setLastSyncTime')
+            ->with('contact', self::isInstanceOf(\DateTimeImmutable::class));
+
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateContacts')->willReturn($this->arrayToGenerator($contacts));
+
+        $ccAdapter->method('upsertContact')
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
+                array_merge($contact->toArray(), ['id' => 'cc-1']),
+            )));
+
+        $engine = new SyncEngine(
+            $ccAdapter,
+            $crmAdapter,
+            $this->createConfig(),
+            new NullLogger(),
+            null,
+            $stateStore,
+        );
+
+        $engine->syncContactsBatch();
+    }
+
+    public function testDoesNotSaveTimestampWhenRecordsFail(): void
+    {
+        $contacts = [
+            Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']),
+        ];
+
+        $stateStore = $this->createMock(SyncStateStoreInterface::class);
+        $stateStore->method('getLastSyncTime')->willReturn(null);
+        $stateStore->expects(self::never())->method('setLastSyncTime');
+
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateContacts')->willReturn($this->arrayToGenerator($contacts));
+        $ccAdapter->method('upsertContact')->willThrowException(new \RuntimeException('API failure'));
+
+        $engine = new SyncEngine(
+            $ccAdapter,
+            $crmAdapter,
+            $this->createConfig(),
+            new NullLogger(),
+            null,
+            $stateStore,
+        );
+
+        $engine->syncContactsBatch();
     }
 
     public function testResetStateIsNoOpWithoutStateStore(): void
