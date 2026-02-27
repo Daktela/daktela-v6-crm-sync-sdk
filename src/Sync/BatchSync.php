@@ -335,7 +335,7 @@ final class BatchSync
     }
 
     /**
-     * @return callable(string, array<string, mixed>): UpsertResult|null
+     * @return (callable(string, array<string, mixed>): UpsertResult)|null
      */
     private function buildUpsertFn(string $entityType): ?callable
     {
