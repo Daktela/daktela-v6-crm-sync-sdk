@@ -19,6 +19,7 @@ use Daktela\CrmSync\Mapping\RelationConfig;
 use Daktela\CrmSync\State\SyncStateStoreInterface;
 use Daktela\CrmSync\Sync\SyncDirection;
 use Daktela\CrmSync\Sync\SyncEngine;
+use Daktela\CrmSync\Sync\Result\SyncResult;
 use Daktela\CrmSync\Sync\Result\SyncStatus;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -78,10 +79,10 @@ final class SyncEngineTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $engine->syncAccountsBatch();
+        $batch = $engine->syncAccountsBatch();
 
-        self::assertSame(1, $result->getTotalCount());
-        self::assertSame(0, $result->getFailedCount());
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(0, $batch->account->getFailedCount());
     }
 
     public function testSyncActivitiesBatch(): void
@@ -159,11 +160,16 @@ final class SyncEngineTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $engine->syncContactsBatch();
+        $batchError = null;
+        $result = $engine->syncContactsBatch(function (string $type, SyncResult $batch) use (&$batchError) {
+            if ($batch->getFailedCount() > 0) {
+                $batchError = $batch->getFailedRecords()[0]->errorMessage;
+            }
+        });
 
         self::assertSame(1, $result->getTotalCount());
         self::assertSame(1, $result->getFailedCount());
-        self::assertSame('API error', $result->getFailedRecords()[0]->errorMessage);
+        self::assertSame('API error', $batchError);
     }
 
     public function testFullSyncRunsAllEntityTypes(): void
@@ -207,9 +213,11 @@ final class SyncEngineTest extends TestCase
         $results = $engine->fullSync([ActivityType::Call]);
 
         self::assertArrayHasKey('account', $results);
+        self::assertArrayHasKey('auto_contact', $results);
         self::assertArrayHasKey('contact', $results);
         self::assertArrayHasKey('activity', $results);
         self::assertSame(1, $results['account']->getTotalCount());
+        self::assertSame(0, $results['auto_contact']->getTotalCount());
         self::assertSame(1, $results['contact']->getTotalCount());
         self::assertSame(1, $results['activity']->getTotalCount());
         self::assertSame(0, $results['account']->getFailedCount());
@@ -279,6 +287,7 @@ final class SyncEngineTest extends TestCase
         $results = $engine->fullSync();
 
         self::assertArrayNotHasKey('account', $results);
+        self::assertArrayNotHasKey('auto_contact', $results);
         self::assertArrayHasKey('contact', $results);
     }
 

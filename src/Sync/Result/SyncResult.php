@@ -15,6 +15,15 @@ final class SyncResult
 
     private bool $exhausted = true;
 
+    /** @var array<string, int> Counters accumulated via mergeCounts() */
+    private array $counters = [
+        'created' => 0,
+        'updated' => 0,
+        'skipped' => 0,
+        'failed' => 0,
+        'total' => 0,
+    ];
+
     public function __construct()
     {
         $this->startTime = microtime(true);
@@ -47,27 +56,27 @@ final class SyncResult
 
     public function getCreatedCount(): int
     {
-        return $this->countByStatus(SyncStatus::Created);
+        return $this->countByStatus(SyncStatus::Created) + $this->counters['created'];
     }
 
     public function getUpdatedCount(): int
     {
-        return $this->countByStatus(SyncStatus::Updated);
+        return $this->countByStatus(SyncStatus::Updated) + $this->counters['updated'];
     }
 
     public function getSkippedCount(): int
     {
-        return $this->countByStatus(SyncStatus::Skipped);
+        return $this->countByStatus(SyncStatus::Skipped) + $this->counters['skipped'];
     }
 
     public function getFailedCount(): int
     {
-        return $this->countByStatus(SyncStatus::Failed);
+        return $this->countByStatus(SyncStatus::Failed) + $this->counters['failed'];
     }
 
     public function getTotalCount(): int
     {
-        return count($this->records);
+        return count($this->records) + $this->counters['total'];
     }
 
     public function getDuration(): float
@@ -87,9 +96,17 @@ final class SyncResult
         return $this->exhausted;
     }
 
-    public function merge(self $other): void
+    /**
+     * Merge only the counters from another result (no RecordResult objects copied).
+     * Keeps memory bounded when accumulating across many batches.
+     */
+    public function mergeCounts(self $other): void
     {
-        array_push($this->records, ...$other->records);
+        $this->counters['created'] += $other->getCreatedCount();
+        $this->counters['updated'] += $other->getUpdatedCount();
+        $this->counters['skipped'] += $other->getSkippedCount();
+        $this->counters['failed'] += $other->getFailedCount();
+        $this->counters['total'] += $other->getTotalCount();
         $this->startTime = min($this->startTime, $other->startTime);
         if ($other->endTime > 0) {
             $this->endTime = max($this->endTime, $other->endTime);

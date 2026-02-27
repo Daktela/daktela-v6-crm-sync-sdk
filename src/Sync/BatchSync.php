@@ -18,6 +18,7 @@ use Daktela\CrmSync\Mapping\MappingCollection;
 use Daktela\CrmSync\Mapping\NestedValue;
 use Daktela\CrmSync\Mapping\RelationConfig;
 use Daktela\CrmSync\State\SyncStateStoreInterface;
+use Daktela\CrmSync\Sync\Result\AccountSyncResult;
 use Daktela\CrmSync\Sync\Result\RecordResult;
 use Daktela\CrmSync\Sync\Result\SyncResult;
 use Daktela\CrmSync\Sync\Result\SyncStatus;
@@ -142,7 +143,7 @@ final class BatchSync
         return $result;
     }
 
-    public function syncAccounts(): SyncResult
+    public function syncAccounts(): AccountSyncResult
     {
         $mapping = $this->config->getMapping('account');
         if ($mapping === null) {
@@ -153,6 +154,7 @@ final class BatchSync
         $syncStartTime = new \DateTimeImmutable();
         $offset = $this->offsets['account'] ?? 0;
         $result = new SyncResult();
+        $autoContactResult = new SyncResult();
         $count = 0;
         $exhausted = true;
 
@@ -169,7 +171,7 @@ final class BatchSync
             if ($record->status !== SyncStatus::Failed) {
                 $autoRecord = $this->autoCreateContactFromAccount($account, $record->targetId);
                 if ($autoRecord !== null) {
-                    $result->addRecord($autoRecord);
+                    $autoContactResult->addRecord($autoRecord);
                 }
             }
 
@@ -183,6 +185,8 @@ final class BatchSync
 
         $result->setExhausted($exhausted);
         $result->finish();
+        $autoContactResult->setExhausted($exhausted);
+        $autoContactResult->finish();
 
         if ($exhausted) {
             $this->offsets['account'] = 0;
@@ -200,7 +204,17 @@ final class BatchSync
             'incremental' => $since !== null,
         ]);
 
-        return $result;
+        if ($autoContactResult->getTotalCount() > 0) {
+            $this->logger->info('Batch auto-contact sync completed', [
+                'total' => $autoContactResult->getTotalCount(),
+                'created' => $autoContactResult->getCreatedCount(),
+                'updated' => $autoContactResult->getUpdatedCount(),
+                'skipped' => $autoContactResult->getSkippedCount(),
+                'failed' => $autoContactResult->getFailedCount(),
+            ]);
+        }
+
+        return new AccountSyncResult($result, $autoContactResult);
     }
 
     /**

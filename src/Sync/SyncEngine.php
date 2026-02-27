@@ -11,6 +11,7 @@ use Daktela\CrmSync\Entity\ActivityType;
 use Daktela\CrmSync\Mapping\FieldMapper;
 use Daktela\CrmSync\Mapping\Transformer\TransformerRegistry;
 use Daktela\CrmSync\State\SyncStateStoreInterface;
+use Daktela\CrmSync\Sync\Result\AccountSyncResult;
 use Daktela\CrmSync\Sync\Result\SyncResult;
 use Psr\Log\LoggerInterface;
 
@@ -56,10 +57,14 @@ final class SyncEngine
      * 3. Activities (Daktela → CRM)
      *
      * @param ActivityType[] $activityTypes
-     * @return array<string, SyncResult> Keyed by entity type: 'account', 'contact', 'activity'
+     * @param ?callable(string, SyncResult): void $onBatch Called after each batch with entity type and batch result
+     * @return array<string, SyncResult> Keyed by entity type: 'account', 'auto_contact', 'contact', 'activity'
      */
-    public function fullSync(array $activityTypes = [], bool $forceFullSync = false): array
-    {
+    public function fullSync(
+        array $activityTypes = [],
+        bool $forceFullSync = false,
+        ?callable $onBatch = null,
+    ): array {
         $this->batchSync->setForceFullSync($forceFullSync);
         $results = [];
 
@@ -68,12 +73,22 @@ final class SyncEngine
             $this->logger->info('Full sync: starting accounts');
             $this->batchSync->resetOffsets();
             $accountResult = new SyncResult();
+            $autoContactResult = new SyncResult();
             do {
                 $batch = $this->batchSync->syncAccounts();
-                $accountResult->merge($batch);
-            } while (!$batch->isExhausted());
+                if ($onBatch !== null) {
+                    $onBatch('account', $batch->account);
+                    if ($batch->autoContact->getTotalCount() > 0) {
+                        $onBatch('auto_contact', $batch->autoContact);
+                    }
+                }
+                $accountResult->mergeCounts($batch->account);
+                $autoContactResult->mergeCounts($batch->autoContact);
+            } while (!$batch->account->isExhausted());
             $accountResult->finish();
+            $autoContactResult->finish();
             $results['account'] = $accountResult;
+            $results['auto_contact'] = $autoContactResult;
         }
 
         // Step 2: Build relation maps from contact mapping configs
@@ -89,7 +104,10 @@ final class SyncEngine
             $contactResult = new SyncResult();
             do {
                 $batch = $this->batchSync->syncContacts();
-                $contactResult->merge($batch);
+                if ($onBatch !== null) {
+                    $onBatch('contact', $batch);
+                }
+                $contactResult->mergeCounts($batch);
             } while (!$batch->isExhausted());
             $contactResult->finish();
             $results['contact'] = $contactResult;
@@ -102,7 +120,10 @@ final class SyncEngine
             $activityResult = new SyncResult();
             do {
                 $batch = $this->batchSync->syncActivities($activityTypes);
-                $activityResult->merge($batch);
+                if ($onBatch !== null) {
+                    $onBatch('activity', $batch);
+                }
+                $activityResult->mergeCounts($batch);
             } while (!$batch->isExhausted());
             $activityResult->finish();
             $results['activity'] = $activityResult;
@@ -142,22 +163,65 @@ final class SyncEngine
         }
     }
 
-    public function syncContactsBatch(): SyncResult
+    /**
+     * @param ?callable(string, SyncResult): void $onBatch Called after each batch with entity type and batch result
+     */
+    public function syncContactsBatch(?callable $onBatch = null): SyncResult
     {
-        return $this->batchSync->syncContacts();
+        $result = new SyncResult();
+        do {
+            $batch = $this->batchSync->syncContacts();
+            if ($onBatch !== null) {
+                $onBatch('contact', $batch);
+            }
+            $result->mergeCounts($batch);
+        } while (!$batch->isExhausted());
+        $result->finish();
+
+        return $result;
     }
 
-    public function syncAccountsBatch(): SyncResult
+    /**
+     * @param ?callable(string, SyncResult): void $onBatch Called after each batch with entity type and batch result
+     */
+    public function syncAccountsBatch(?callable $onBatch = null): AccountSyncResult
     {
-        return $this->batchSync->syncAccounts();
+        $accountResult = new SyncResult();
+        $autoContactResult = new SyncResult();
+        do {
+            $batch = $this->batchSync->syncAccounts();
+            if ($onBatch !== null) {
+                $onBatch('account', $batch->account);
+                if ($batch->autoContact->getTotalCount() > 0) {
+                    $onBatch('auto_contact', $batch->autoContact);
+                }
+            }
+            $accountResult->mergeCounts($batch->account);
+            $autoContactResult->mergeCounts($batch->autoContact);
+        } while (!$batch->account->isExhausted());
+        $accountResult->finish();
+        $autoContactResult->finish();
+
+        return new AccountSyncResult($accountResult, $autoContactResult);
     }
 
     /**
      * @param ActivityType[] $activityTypes
+     * @param ?callable(string, SyncResult): void $onBatch Called after each batch with entity type and batch result
      */
-    public function syncActivitiesBatch(array $activityTypes = []): SyncResult
+    public function syncActivitiesBatch(array $activityTypes = [], ?callable $onBatch = null): SyncResult
     {
-        return $this->batchSync->syncActivities($activityTypes);
+        $result = new SyncResult();
+        do {
+            $batch = $this->batchSync->syncActivities($activityTypes);
+            if ($onBatch !== null) {
+                $onBatch('activity', $batch);
+            }
+            $result->mergeCounts($batch);
+        } while (!$batch->isExhausted());
+        $result->finish();
+
+        return $result;
     }
 
     public function syncContact(string $id): SyncResult

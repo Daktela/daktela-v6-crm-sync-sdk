@@ -476,10 +476,10 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(1, $result->getSkippedCount());
-        self::assertSame(0, $result->getUpdatedCount());
+        self::assertSame(1, $batch->account->getSkippedCount());
+        self::assertSame(0, $batch->account->getUpdatedCount());
 
         // Relation map should still be populated for skipped records
         $maps = $batchSync->getRelationMaps();
@@ -581,16 +581,16 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        // 1 account + 1 auto-contact
-        self::assertSame(2, $result->getTotalCount());
-        self::assertSame(2, $result->getCreatedCount());
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(1, $batch->account->getCreatedCount());
+        self::assertSame('account', $batch->account->getRecords()[0]->entityType);
 
-        $records = $result->getRecords();
-        self::assertSame('account', $records[0]->entityType);
-        self::assertSame('contact', $records[1]->entityType);
-        self::assertSame('cc-contact-auto', $records[1]->targetId);
+        self::assertSame(1, $batch->autoContact->getTotalCount());
+        self::assertSame(1, $batch->autoContact->getCreatedCount());
+        self::assertSame('contact', $batch->autoContact->getRecords()[0]->entityType);
+        self::assertSame('cc-contact-auto', $batch->autoContact->getRecords()[0]->targetId);
     }
 
     public function testAutoContactSkippedWhenAccountSyncFails(): void
@@ -615,10 +615,11 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(1, $result->getTotalCount());
-        self::assertSame(1, $result->getFailedCount());
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(1, $batch->account->getFailedCount());
+        self::assertSame(0, $batch->autoContact->getTotalCount());
     }
 
     public function testAutoContactNotCreatedWhenNotConfigured(): void
@@ -647,9 +648,10 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(1, $result->getTotalCount());
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(0, $batch->autoContact->getTotalCount());
     }
 
     public function testAutoContactHasAccountFieldInjected(): void
@@ -733,11 +735,12 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
         // Only account record, no auto-contact
-        self::assertSame(1, $result->getTotalCount());
-        self::assertSame('account', $result->getRecords()[0]->entityType);
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame('account', $batch->account->getRecords()[0]->entityType);
+        self::assertSame(0, $batch->autoContact->getTotalCount());
     }
 
     public function testAutoContactCreatedWhenNoMatchingContactForSkipFields(): void
@@ -772,11 +775,12 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(2, $result->getTotalCount());
-        self::assertSame('contact', $result->getRecords()[1]->entityType);
-        self::assertSame(SyncStatus::Created, $result->getRecords()[1]->status);
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(1, $batch->autoContact->getTotalCount());
+        self::assertSame('contact', $batch->autoContact->getRecords()[0]->entityType);
+        self::assertSame(SyncStatus::Created, $batch->autoContact->getRecords()[0]->status);
     }
 
     public function testAutoContactSkippedInAnyModeWhenSingleFieldMatches(): void
@@ -820,9 +824,10 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(1, $result->getTotalCount());
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(0, $batch->autoContact->getTotalCount());
     }
 
     public function testAutoContactSkippedWhenRequiredFieldsEmpty(): void
@@ -853,10 +858,11 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(1, $result->getTotalCount());
-        self::assertSame('account', $result->getRecords()[0]->entityType);
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame('account', $batch->account->getRecords()[0]->entityType);
+        self::assertSame(0, $batch->autoContact->getTotalCount());
     }
 
     public function testAutoContactCreatedWhenAtLeastOneRequiredFieldPresent(): void
@@ -890,10 +896,11 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(2, $result->getTotalCount());
-        self::assertSame(SyncStatus::Created, $result->getRecords()[1]->status);
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(1, $batch->autoContact->getTotalCount());
+        self::assertSame(SyncStatus::Created, $batch->autoContact->getRecords()[0]->status);
     }
 
     public function testAutoContactUpdatedWhenAlreadyExists(): void
@@ -930,10 +937,11 @@ final class BatchSyncTest extends TestCase
             new NullLogger(),
         );
 
-        $result = $batchSync->syncAccounts();
+        $batch = $batchSync->syncAccounts();
 
-        self::assertSame(2, $result->getTotalCount());
-        self::assertSame(SyncStatus::Updated, $result->getRecords()[1]->status);
+        self::assertSame(1, $batch->account->getTotalCount());
+        self::assertSame(1, $batch->autoContact->getTotalCount());
+        self::assertSame(SyncStatus::Updated, $batch->autoContact->getRecords()[0]->status);
     }
 
     private function createConfig(int $batchSize = 100): SyncConfiguration
