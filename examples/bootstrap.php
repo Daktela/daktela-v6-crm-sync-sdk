@@ -11,6 +11,7 @@
  *   2. Replace the $crmAdapter placeholder with your own implementation
  *   3. Run any example: php examples/full-sync.php
  *
+ * @see examples/raynet/ for ready-to-run Raynet examples using SyncEngineFactory
  * @see docs/04-implementing-crm-adapter.md for how to build a CRM adapter
  */
 
@@ -20,17 +21,11 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Daktela\CrmSync\Adapter\Daktela\DaktelaAdapter;
 use Daktela\CrmSync\Config\YamlConfigLoader;
+use Daktela\CrmSync\Logging\StderrLogger;
 use Daktela\CrmSync\Sync\SyncEngine;
-use Psr\Log\AbstractLogger;
 
 // --- Logger (replace with Monolog or your PSR-3 logger in production) ---
-$logger = new class extends AbstractLogger {
-    public function log($level, string|\Stringable $message, array $context = []): void
-    {
-        $timestamp = date('Y-m-d H:i:s');
-        fprintf(STDERR, "[%s] %s: %s\n", $timestamp, strtoupper((string) $level), $message);
-    }
-};
+$logger = new StderrLogger();
 
 // --- Load configuration ---
 $configPath = getenv('SYNC_CONFIG_PATH') ?: __DIR__ . '/../config/sync.yaml';

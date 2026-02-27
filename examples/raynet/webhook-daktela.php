@@ -18,10 +18,14 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
+use Daktela\CrmSync\Config\YamlConfigLoader;
 use Daktela\CrmSync\Webhook\WebhookHandler;
 use Daktela\CrmSync\Webhook\WebhookPayloadParser;
 use Nyholm\Psr7\Factory\Psr17Factory;
 use Nyholm\Psr7Server\ServerRequestCreator;
+
+// --- Load webhook secret from config ---
+$syncConfig = (new YamlConfigLoader())->load($configPath);
 
 // --- Create PSR-7 request from globals ---
 $psr17Factory = new Psr17Factory();

@@ -115,61 +115,60 @@ Create a class that implements `CrmAdapterInterface`. This is where you connect 
 
 See [Implementing a CRM Adapter](04-implementing-crm-adapter.md) for a complete guide with examples.
 
+> **Using Raynet CRM?** Skip step 4 — use `SyncEngineFactory` instead:
+>
+> ```php
+> $factory = SyncEngineFactory::fromYaml('config/sync.yaml');
+> $engine = $factory->getEngine();
+> ```
+>
+> See [`examples/raynet/`](../examples/raynet/) for ready-to-run scripts.
+
 ### 4. Wire Everything Together
 
 ```php
 use Daktela\CrmSync\Adapter\Daktela\DaktelaAdapter;
 use Daktela\CrmSync\Config\YamlConfigLoader;
+use Daktela\CrmSync\Logging\StderrLogger;
 use Daktela\CrmSync\Sync\SyncEngine;
-use Psr\Log\NullLogger;
 
-// Load configuration
+$logger = new StderrLogger();
 $config = (new YamlConfigLoader())->load(__DIR__ . '/config/sync.yaml');
 
-// Create adapters
 $ccAdapter = new DaktelaAdapter(
     $config->instanceUrl,
     $config->accessToken,
     $config->database,
-    new NullLogger(),
+    $logger,
 );
 
 $crmAdapter = new YourCrmAdapter(/* your CRM connection params */);
 
-// Create the sync engine
-$engine = new SyncEngine($ccAdapter, $crmAdapter, $config, new NullLogger());
+$engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger);
 ```
 
 ### 5. Run a Sync
 
-**Full sync** (recommended — handles dependencies automatically):
-
 ```php
+// Verify connectivity
+$engine->testConnections();
+
+// Full sync (recommended — handles dependencies automatically)
 $results = $engine->fullSync();
 
-foreach ($results as $entityType => $result) {
-    echo sprintf(
-        "%s: %d total, %d created, %d updated, %d failed\n",
-        $entityType,
-        $result->getTotalCount(),
-        $result->getCreatedCount(),
-        $result->getUpdatedCount(),
-        $result->getFailedCount(),
-    );
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
 }
+// Output: Account: 42 total, 5 created, 10 updated, 25 skipped, 2 failed (1.23s)
 ```
 
 **Individual entity sync:**
 
 ```php
-// Sync accounts first (required if contacts reference accounts)
-$engine->syncAccountsBatch();
-
-// Then sync contacts
-$result = $engine->syncContactsBatch();
-
-// Sync activities
-$result = $engine->syncActivitiesBatch();
+$engine->syncAccountsBatch();               // Sync accounts first
+$result = $engine->syncContactsBatch();     // Then contacts
+$result = $engine->syncActivitiesBatch();   // Then activities
+echo $result->getSummary('Activities');
 ```
 
 > **Tip:** The [`examples/`](../examples/) directory contains ready-to-run scripts for all sync

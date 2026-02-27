@@ -43,7 +43,16 @@ A production deployment consists of three runtime components:
 
 Without a state store, every `fullSync()` call re-syncs all records from scratch. The `FileSyncStateStore` enables incremental sync by saving the last successful sync timestamp per entity type.
 
-### Wiring
+### Wiring (Raynet — using SyncEngineFactory)
+
+```php
+use Daktela\CrmSync\Sync\SyncEngineFactory;
+
+$factory = SyncEngineFactory::fromYaml('config/sync.yaml', stateStorePath: 'var/sync-state.json');
+$engine = $factory->getEngine();
+```
+
+### Wiring (Custom CRM Adapter)
 
 ```php
 use Daktela\CrmSync\State\FileSyncStateStore;
@@ -94,7 +103,7 @@ Choose a writable directory outside the web root (e.g. `/var/data/myapp/`). The 
 
 ### CLI Sync Script
 
-Create a `bin/sync.php` script:
+Create a `bin/sync.php` script (Raynet example — for a custom CRM adapter, replace the factory with manual wiring):
 
 ```php
 #!/usr/bin/env php
@@ -102,29 +111,12 @@ Create a `bin/sync.php` script:
 
 require __DIR__ . '/../vendor/autoload.php';
 
-use Daktela\CrmSync\Adapter\Daktela\DaktelaAdapter;
-use Daktela\CrmSync\Config\YamlConfigLoader;
-use Daktela\CrmSync\State\FileSyncStateStore;
-use Daktela\CrmSync\Sync\SyncEngine;
-use Monolog\Handler\StreamHandler;
-use Monolog\Logger;
+use Daktela\CrmSync\Sync\SyncEngineFactory;
 
-$config = (new YamlConfigLoader())->load(__DIR__ . '/../config/sync.yaml');
+$configPath = getenv('SYNC_CONFIG_PATH') ?: __DIR__ . '/../config/sync.yaml';
 
-$logger = new Logger('sync');
-$logger->pushHandler(new StreamHandler(__DIR__ . '/../var/log/sync.log', Logger::INFO));
-
-$ccAdapter = new DaktelaAdapter($config->instanceUrl, $config->accessToken, $config->database, $logger);
-$crmAdapter = new YourCrmAdapter(/* ... */);
-$stateStore = new FileSyncStateStore(__DIR__ . '/../var/data/sync-state.json');
-
-$engine = new SyncEngine(
-    ccAdapter: $ccAdapter,
-    crmAdapter: $crmAdapter,
-    config: $config,
-    logger: $logger,
-    stateStore: $stateStore,
-);
+$factory = SyncEngineFactory::fromYaml($configPath, stateStorePath: __DIR__ . '/../var/sync-state.json');
+$engine = $factory->getEngine();
 
 // Parse CLI arguments
 $forceFullSync = in_array('--force-full', $argv, true);
@@ -139,28 +131,28 @@ foreach ($argv as $arg) {
 
 if ($resetState) {
     $engine->resetState();
-    $logger->info('All sync state cleared');
+    fprintf(STDERR, "All sync state cleared\n");
     exit(0);
 }
 
 if ($resetEntity !== null) {
     $engine->resetState($resetEntity);
-    $logger->info("Sync state cleared for: {$resetEntity}");
+    fprintf(STDERR, "Sync state cleared for: %s\n", $resetEntity);
     exit(0);
 }
 
-$logger->info('Starting sync', ['forceFullSync' => $forceFullSync]);
+$engine->testConnections();
 
 $results = $engine->fullSync(forceFullSync: $forceFullSync);
 
 $hasFailures = false;
-foreach ($results as $entityType => $result) {
-    $logger->info("{$entityType}: {$result->getTotalCount()} total, {$result->getCreatedCount()} created, {$result->getUpdatedCount()} updated, {$result->getFailedCount()} failed");
+foreach ($results as $type => $result) {
+    fprintf(STDERR, "%s\n", $result->getSummary(ucfirst($type)));
 
     if ($result->getFailedCount() > 0) {
         $hasFailures = true;
         foreach ($result->getFailedRecords() as $failed) {
-            $logger->error("Failed {$failed->entityType} {$failed->sourceId}: {$failed->errorMessage}");
+            fprintf(STDERR, "  Failed %s %s: %s\n", $failed->entityType, $failed->sourceId, $failed->errorMessage);
         }
     }
 }
@@ -345,12 +337,13 @@ $engine->resetState('contact');
 Check `SyncResult` for failures after each run:
 
 ```php
-foreach ($results as $entityType => $result) {
-    if ($result->getFailedCount() > 0) {
-        $logger->warning("{$entityType}: {$result->getFailedCount()} records failed");
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
+    // Output: Contact: 150 total, 5 created, 10 updated, 130 skipped, 5 failed (2.34s)
 
+    if ($result->getFailedCount() > 0) {
         foreach ($result->getFailedRecords() as $failed) {
-            $logger->error("Failed {$failed->entityType} {$failed->sourceId}: {$failed->errorMessage}");
+            fprintf(STDERR, "  Failed %s %s: %s\n", $failed->entityType, $failed->sourceId, $failed->errorMessage);
         }
     }
 }

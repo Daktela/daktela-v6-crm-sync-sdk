@@ -17,17 +17,8 @@ $logger->info('Starting full sync...');
 
 $results = $engine->fullSync();
 
-foreach ($results as $entityType => $result) {
-    $logger->info(sprintf(
-        '%s: %d total, %d created, %d updated, %d skipped, %d failed (%.2fs)',
-        ucfirst($entityType),
-        $result->getTotalCount(),
-        $result->getCreatedCount(),
-        $result->getUpdatedCount(),
-        $result->getSkippedCount(),
-        $result->getFailedCount(),
-        $result->getDuration(),
-    ));
+foreach ($results as $type => $result) {
+    $logger->info($result->getSummary(ucfirst($type)));
 }
 
 $logger->info('Full sync complete');

@@ -18,6 +18,8 @@ require_once __DIR__ . '/bootstrap.php';
 
 use Daktela\CrmSync\Entity\ActivityType;
 
+$engine->testConnections();
+
 $entityType = $argv[1] ?? null;
 $recordId = $argv[2] ?? null;
 
@@ -50,16 +52,7 @@ $result = match ($entityType) {
     })(),
 };
 
-$logger->info(sprintf(
-    '%s %s: %d total, %d created, %d updated, %d failed (%.2fs)',
-    ucfirst($entityType),
-    $recordId,
-    $result->getTotalCount(),
-    $result->getCreatedCount(),
-    $result->getUpdatedCount(),
-    $result->getFailedCount(),
-    $result->getDuration(),
-));
+$logger->info($result->getSummary(ucfirst($entityType) . ' ' . $recordId));
 
 if ($result->getFailedCount() > 0) {
     foreach ($result->getFailedRecords() as $record) {

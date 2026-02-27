@@ -347,6 +347,65 @@ final class SyncEngineTest extends TestCase
         $engine->resetState();
     }
 
+    public function testTestConnectionsSucceeds(): void
+    {
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->expects(self::once())->method('ping')->willReturn(true);
+        $ccAdapter->expects(self::once())->method('ping')->willReturn(true);
+
+        $engine = new SyncEngine(
+            $ccAdapter,
+            $crmAdapter,
+            $this->createConfig(),
+            new NullLogger(),
+        );
+
+        $engine->testConnections();
+        $this->addToAssertionCount(1);
+    }
+
+    public function testTestConnectionsThrowsOnCrmFailure(): void
+    {
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('ping')->willReturn(false);
+        $ccAdapter->expects(self::never())->method('ping');
+
+        $engine = new SyncEngine(
+            $ccAdapter,
+            $crmAdapter,
+            $this->createConfig(),
+            new NullLogger(),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot connect to CRM API');
+        $engine->testConnections();
+    }
+
+    public function testTestConnectionsThrowsOnCcFailure(): void
+    {
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('ping')->willReturn(true);
+        $ccAdapter->method('ping')->willReturn(false);
+
+        $engine = new SyncEngine(
+            $ccAdapter,
+            $crmAdapter,
+            $this->createConfig(),
+            new NullLogger(),
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Cannot connect to Daktela API');
+        $engine->testConnections();
+    }
+
     public function testResetStateIsNoOpWithoutStateStore(): void
     {
         $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);

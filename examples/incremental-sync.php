@@ -14,6 +14,7 @@
  *   php examples/incremental-sync.php --force-full     # ignore state, sync everything
  *   php examples/incremental-sync.php --reset-state    # clear state and exit
  *
+ * @see examples/raynet/incremental-sync.php for a ready-to-run Raynet version
  * @see docs/09-production-deployment.md for a production-ready version
  */
 
@@ -23,18 +24,12 @@ require_once __DIR__ . '/../vendor/autoload.php';
 
 use Daktela\CrmSync\Adapter\Daktela\DaktelaAdapter;
 use Daktela\CrmSync\Config\YamlConfigLoader;
+use Daktela\CrmSync\Logging\StderrLogger;
 use Daktela\CrmSync\State\FileSyncStateStore;
 use Daktela\CrmSync\Sync\SyncEngine;
-use Psr\Log\AbstractLogger;
 
 // --- Logger ---
-$logger = new class extends AbstractLogger {
-    public function log($level, string|\Stringable $message, array $context = []): void
-    {
-        $timestamp = date('Y-m-d H:i:s');
-        fprintf(STDERR, "[%s] %s: %s\n", $timestamp, strtoupper((string) $level), $message);
-    }
-};
+$logger = new StderrLogger();
 
 // --- Parse CLI flags ---
 $forceFull = in_array('--force-full', $argv, true);
@@ -76,6 +71,8 @@ if ($crmAdapter === null) {
 // --- Create engine with state store for incremental sync ---
 $engine = new SyncEngine($ccAdapter, $crmAdapter, $config, $logger, stateStore: $stateStore);
 
+$engine->testConnections();
+
 // --- Run sync ---
 if ($forceFull) {
     $logger->info('Starting forced full sync (ignoring state)...');
@@ -85,17 +82,8 @@ if ($forceFull) {
 
 $results = $engine->fullSync(forceFullSync: $forceFull);
 
-foreach ($results as $entityType => $result) {
-    $logger->info(sprintf(
-        '%s: %d total, %d created, %d updated, %d skipped, %d failed (%.2fs)',
-        ucfirst($entityType),
-        $result->getTotalCount(),
-        $result->getCreatedCount(),
-        $result->getUpdatedCount(),
-        $result->getSkippedCount(),
-        $result->getFailedCount(),
-        $result->getDuration(),
-    ));
+foreach ($results as $type => $result) {
+    $logger->info($result->getSummary(ucfirst($type)));
 }
 
 $logger->info('Sync complete');

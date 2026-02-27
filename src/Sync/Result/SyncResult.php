@@ -96,6 +96,20 @@ final class SyncResult
         }
     }
 
+    public function getSummary(string $label): string
+    {
+        return sprintf(
+            '%s: %d total, %d created, %d updated, %d skipped, %d failed (%.2fs)',
+            $label,
+            $this->getTotalCount(),
+            $this->getCreatedCount(),
+            $this->getUpdatedCount(),
+            $this->getSkippedCount(),
+            $this->getFailedCount(),
+            $this->getDuration(),
+        );
+    }
+
     private function countByStatus(SyncStatus $status): int
     {
         return count(array_filter(

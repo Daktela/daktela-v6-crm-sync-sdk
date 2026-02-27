@@ -21,38 +21,17 @@ use Daktela\CrmSync\Entity\ActivityType;
 // --- 1. Sync accounts first (contacts may reference them) ---
 $logger->info('Syncing accounts...');
 $accountResult = $engine->syncAccountsBatch();
-$logger->info(sprintf(
-    'Accounts: %d total, %d created, %d updated, %d failed (%.2fs)',
-    $accountResult->getTotalCount(),
-    $accountResult->getCreatedCount(),
-    $accountResult->getUpdatedCount(),
-    $accountResult->getFailedCount(),
-    $accountResult->getDuration(),
-));
+$logger->info($accountResult->getSummary('Accounts'));
 
 // --- 2. Sync contacts ---
 $logger->info('Syncing contacts...');
 $contactResult = $engine->syncContactsBatch();
-$logger->info(sprintf(
-    'Contacts: %d total, %d created, %d updated, %d failed (%.2fs)',
-    $contactResult->getTotalCount(),
-    $contactResult->getCreatedCount(),
-    $contactResult->getUpdatedCount(),
-    $contactResult->getFailedCount(),
-    $contactResult->getDuration(),
-));
+$logger->info($contactResult->getSummary('Contacts'));
 
 // --- 3. Sync activities (only calls and emails) ---
 $logger->info('Syncing activities...');
 $activityResult = $engine->syncActivitiesBatch([ActivityType::Call, ActivityType::Email]);
-$logger->info(sprintf(
-    'Activities: %d total, %d created, %d updated, %d failed (%.2fs)',
-    $activityResult->getTotalCount(),
-    $activityResult->getCreatedCount(),
-    $activityResult->getUpdatedCount(),
-    $activityResult->getFailedCount(),
-    $activityResult->getDuration(),
-));
+$logger->info($activityResult->getSummary('Activities'));
 
 // --- Inspect failures ---
 foreach ($activityResult->getFailedRecords() as $record) {

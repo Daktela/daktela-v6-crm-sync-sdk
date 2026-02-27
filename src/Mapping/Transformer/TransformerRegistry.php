@@ -41,6 +41,10 @@ final class TransformerRegistry
         $registry->register(new UrlTransformer());
         $registry->register(new JoinTransformer());
 
+        /** @var CallbackTransformer $callback */
+        $callback = $registry->get('callback');
+        $callback->registerCallback('strval', fn (mixed $value) => (string) ($value ?? ''));
+
         return $registry;
     }
 }

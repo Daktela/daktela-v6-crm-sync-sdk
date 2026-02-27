@@ -2,6 +2,34 @@
 
 The `SyncEngine` orchestrates syncing between adapters using field mappings.
 
+## Quick Start with SyncEngineFactory (Raynet)
+
+For Raynet CRM, `SyncEngineFactory` wires everything from a single YAML config:
+
+```php
+use Daktela\CrmSync\Sync\SyncEngineFactory;
+
+$factory = SyncEngineFactory::fromYaml('config/sync.yaml', stateStorePath: 'var/sync-state.json');
+$engine = $factory->getEngine();
+
+$engine->testConnections();
+
+$results = $engine->fullSync();
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
+}
+```
+
+The factory creates all adapters, loads config, registers transformers, and builds the engine. Pass an optional `LoggerInterface` as the second argument (defaults to `StderrLogger`).
+
+## Connection Test
+
+Verify both API connections before syncing:
+
+```php
+$engine->testConnections(); // throws RuntimeException on failure
+```
+
 ## Full Sync (Recommended)
 
 The `fullSync()` method handles all entity types in the correct dependency order:
@@ -13,15 +41,8 @@ The `fullSync()` method handles all entity types in the correct dependency order
 ```php
 $results = $engine->fullSync();
 
-foreach ($results as $entityType => $result) {
-    echo sprintf(
-        "%s: %d total, %d created, %d updated, %d failed\n",
-        $entityType,
-        $result->getTotalCount(),
-        $result->getCreatedCount(),
-        $result->getUpdatedCount(),
-        $result->getFailedCount(),
-    );
+foreach ($results as $type => $result) {
+    echo $result->getSummary(ucfirst($type)) . "\n";
 }
 ```
 
@@ -70,6 +91,7 @@ $result->getFailedCount();   // Records that failed
 $result->getDuration();      // Time in seconds
 $result->getRecords();       // All RecordResult objects
 $result->getFailedRecords(); // Only failed RecordResult objects
+$result->getSummary('Label'); // "Label: 5 total, 2 created, 1 updated, 1 skipped, 1 failed (0.12s)"
 $result->isExhausted();      // True if all source records were processed (no more batches)
 $result->merge($other);      // Merge another SyncResult into this one (used by fullSync internally)
 ```

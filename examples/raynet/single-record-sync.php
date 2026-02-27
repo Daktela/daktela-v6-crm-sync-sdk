@@ -50,16 +50,7 @@ $result = match ($entityType) {
     })(),
 };
 
-$logger->info(sprintf(
-    '%s %s: %d total, %d created, %d updated, %d failed (%.2fs)',
-    ucfirst($entityType),
-    $recordId,
-    $result->getTotalCount(),
-    $result->getCreatedCount(),
-    $result->getUpdatedCount(),
-    $result->getFailedCount(),
-    $result->getDuration(),
-));
+$logger->info($result->getSummary(ucfirst($entityType) . ' ' . $recordId));
 
 if ($result->getFailedCount() > 0) {
     foreach ($result->getFailedRecords() as $record) {

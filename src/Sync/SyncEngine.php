@@ -113,6 +113,22 @@ final class SyncEngine
         return $results;
     }
 
+    /**
+     * @throws \RuntimeException if either connection fails
+     */
+    public function testConnections(): void
+    {
+        if (!$this->crmAdapter->ping()) {
+            throw new \RuntimeException('Cannot connect to CRM API');
+        }
+        $this->logger->info('CRM connection OK');
+
+        if (!$this->ccAdapter->ping()) {
+            throw new \RuntimeException('Cannot connect to Daktela API');
+        }
+        $this->logger->info('Daktela connection OK');
+    }
+
     public function resetState(?string $entityType = null): void
     {
         if ($this->stateStore === null) {
