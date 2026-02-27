@@ -75,7 +75,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
             return new UpsertResult($this->updateContact($existing->getId(), $contact));
         }
 
-        return new UpsertResult($this->createContact($contact));
+        return new UpsertResult($this->createContact($contact), created: true);
     }
 
     public function findAccount(string $id): ?Account
@@ -122,7 +122,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
             return new UpsertResult($this->updateAccount($existing->getId(), $account));
         }
 
-        return new UpsertResult($this->createAccount($account));
+        return new UpsertResult($this->createAccount($account), created: true);
     }
 
     public function findActivity(string $id, ActivityType $type): ?Activity
@@ -224,6 +224,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
     /**
      * Normalize a value for comparison to account for Daktela API transformations:
      * - stdClass is cast to array (Daktela client uses json_decode without assoc flag)
+     * - Entity reference objects ({name: "x", title: "..."}) are reduced to the name value
      * - Single-element lists are unwrapped (Daktela wraps some string fields in arrays)
      * - Associative arrays are normalized recursively (e.g. customFields)
      * - Non-alphabetic strings (phones, codes) have whitespace fully stripped
@@ -237,6 +238,12 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
 
         if (is_array($value) && count($value) === 1 && array_is_list($value)) {
             $value = $value[0];
+        }
+
+        // Daktela returns relation fields as full objects ({name, title, ...}).
+        // We only send the name identifier, so reduce to that for comparison.
+        if (is_array($value) && !array_is_list($value) && isset($value['name'])) {
+            $value = $value['name'];
         }
 
         if (is_array($value)) {

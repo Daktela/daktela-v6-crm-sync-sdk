@@ -264,15 +264,17 @@ final class BatchSync
             $upsertResult = $upsertFn($mapping->lookupField, $mapped);
             $synced = $upsertResult->entity;
 
-            $wasCreated = !$upsertResult->skipped && ($entity->getId() !== $synced->getId());
+            $status = match (true) {
+                $upsertResult->skipped => SyncStatus::Skipped,
+                $upsertResult->created => SyncStatus::Created,
+                default => SyncStatus::Updated,
+            };
 
             $record = new RecordResult(
                 entityType: $entityType,
                 sourceId: $entity->getId(),
                 targetId: $synced->getId(),
-                status: $upsertResult->skipped
-                    ? SyncStatus::Skipped
-                    : ($wasCreated ? SyncStatus::Created : SyncStatus::Updated),
+                status: $status,
             );
 
             if ($record->status !== SyncStatus::Failed && $entity->getId() !== null && $record->targetId !== null) {

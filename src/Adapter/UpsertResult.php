@@ -10,6 +10,7 @@ final readonly class UpsertResult
 {
     public function __construct(
         public EntityInterface $entity,
+        public bool $created = false,
         public bool $skipped = false,
     ) {
     }

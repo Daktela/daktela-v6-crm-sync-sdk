@@ -485,6 +485,71 @@ final class BatchSyncTest extends TestCase
         self::assertSame('cc-acc-1', $maps['account']['acc-1']);
     }
 
+    public function testCreatedFlagDeterminesCreatedStatus(): void
+    {
+        $contacts = [
+            Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']),
+        ];
+
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
+
+        // Adapter signals this was a new record via created flag
+        $ccAdapter->method('upsertContact')
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(
+                Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-1'])),
+                created: true,
+            ));
+
+        $batchSync = new BatchSync(
+            $ccAdapter,
+            $crmAdapter,
+            new FieldMapper(TransformerRegistry::withDefaults()),
+            $this->createConfig(),
+            new NullLogger(),
+        );
+
+        $result = $batchSync->syncContacts();
+
+        self::assertSame(1, $result->getCreatedCount());
+        self::assertSame(0, $result->getUpdatedCount());
+        self::assertSame(SyncStatus::Created, $result->getRecords()[0]->status);
+    }
+
+    public function testUpdatedFlagDeterminesUpdatedStatus(): void
+    {
+        $contacts = [
+            Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']),
+        ];
+
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
+
+        // Adapter signals this was an update (created=false, skipped=false)
+        $ccAdapter->method('upsertContact')
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(
+                Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-1'])),
+            ));
+
+        $batchSync = new BatchSync(
+            $ccAdapter,
+            $crmAdapter,
+            new FieldMapper(TransformerRegistry::withDefaults()),
+            $this->createConfig(),
+            new NullLogger(),
+        );
+
+        $result = $batchSync->syncContacts();
+
+        self::assertSame(0, $result->getCreatedCount());
+        self::assertSame(1, $result->getUpdatedCount());
+        self::assertSame(SyncStatus::Updated, $result->getRecords()[0]->status);
+    }
+
     private function createConfig(int $batchSize = 100): SyncConfiguration
     {
         $contactMapping = new MappingCollection('contact', 'email', [

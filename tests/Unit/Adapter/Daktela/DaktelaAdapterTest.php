@@ -128,5 +128,23 @@ final class DaktelaAdapterTest extends TestCase
             ['title' => '  John   Doe  '],
             false,
         ];
+
+        yield 'relation object reduced to name matches scalar' => [
+            ['account' => ['name' => 'acme', 'title' => 'Acme Corp', 'database' => 'main']],
+            ['account' => 'acme'],
+            false,
+        ];
+
+        yield 'relation object with different name is detected' => [
+            ['account' => ['name' => 'acme', 'title' => 'Acme Corp']],
+            ['account' => 'globex'],
+            true,
+        ];
+
+        yield 'relation stdClass object reduced to name' => [
+            ['account' => (object) ['name' => 'acme', 'title' => 'Acme Corp']],
+            ['account' => 'acme'],
+            false,
+        ];
     }
 }
