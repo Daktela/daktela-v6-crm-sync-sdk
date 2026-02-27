@@ -24,6 +24,12 @@ final class BatchSync
     /** @var array<string, array<string, string>> */
     private array $relationMaps = [];
 
+    /** @var array<string, true> Keys are "entityType:crmId" */
+    private array $syncingEntities = [];
+
+    /** @var array<string, int> Tracks pagination offset per entity type */
+    private array $offsets = [];
+
     private bool $forceFullSync = false;
 
     public function __construct(
@@ -41,11 +47,16 @@ final class BatchSync
         $this->forceFullSync = $force;
     }
 
+    public function resetOffsets(): void
+    {
+        $this->offsets = [];
+    }
+
     /**
      * Builds relation resolution maps by scanning mapping configs for relation definitions,
      * then iterating the relevant source entities to build CRM-ID → CC-ID maps.
      *
-     * Call this before syncContacts() when contacts have account relations.
+     * Optional: pre-populates the map for efficiency. Missing relations are auto-resolved on-the-fly.
      */
     public function buildRelationMaps(): void
     {
@@ -83,19 +94,17 @@ final class BatchSync
 
         $since = $this->resolveSince('contact');
         $syncStartTime = new \DateTimeImmutable();
+        $offset = $this->offsets['contact'] ?? 0;
         $result = new SyncResult();
         $count = 0;
         $exhausted = true;
 
-        foreach ($this->crmAdapter->iterateContacts($since) as $contact) {
+        foreach ($this->crmAdapter->iterateContacts($since, $offset) as $contact) {
             $record = $this->syncEntityToCc(
                 entity: $contact,
                 mapping: $mapping,
                 entityType: 'contact',
-                upsertFn: fn (string $lookupField, array $data) => $this->ccAdapter->upsertContact(
-                    $lookupField,
-                    \Daktela\CrmSync\Entity\Contact::fromArray($data),
-                ),
+                upsertFn: $this->buildUpsertFn('contact'),
             );
 
             $result->addRecord($record);
@@ -107,16 +116,21 @@ final class BatchSync
             }
         }
 
+        $result->setExhausted($exhausted);
         $result->finish();
 
         if ($exhausted) {
+            $this->offsets['contact'] = 0;
             $this->saveState('contact', $syncStartTime, $result);
+        } else {
+            $this->offsets['contact'] = $offset + $count;
         }
 
         $this->logger->info('Batch contact sync completed', [
             'total' => $result->getTotalCount(),
             'created' => $result->getCreatedCount(),
             'updated' => $result->getUpdatedCount(),
+            'skipped' => $result->getSkippedCount(),
             'failed' => $result->getFailedCount(),
             'incremental' => $since !== null,
         ]);
@@ -133,26 +147,18 @@ final class BatchSync
 
         $since = $this->resolveSince('account');
         $syncStartTime = new \DateTimeImmutable();
+        $offset = $this->offsets['account'] ?? 0;
         $result = new SyncResult();
         $count = 0;
         $exhausted = true;
 
-        foreach ($this->crmAdapter->iterateAccounts($since) as $account) {
+        foreach ($this->crmAdapter->iterateAccounts($since, $offset) as $account) {
             $record = $this->syncEntityToCc(
                 entity: $account,
                 mapping: $mapping,
                 entityType: 'account',
-                upsertFn: fn (string $lookupField, array $data) => $this->ccAdapter->upsertAccount(
-                    $lookupField,
-                    \Daktela\CrmSync\Entity\Account::fromArray($data),
-                ),
+                upsertFn: $this->buildUpsertFn('account'),
             );
-
-            // After successful account sync, add to relation map for later contact sync
-            if ($record->status !== SyncStatus::Failed && $account->getId() !== null && $record->targetId !== null) {
-                $this->relationMaps['account'] ??= [];
-                $this->relationMaps['account'][(string) $account->getId()] = $record->targetId;
-            }
 
             $result->addRecord($record);
             $count++;
@@ -163,16 +169,21 @@ final class BatchSync
             }
         }
 
+        $result->setExhausted($exhausted);
         $result->finish();
 
         if ($exhausted) {
+            $this->offsets['account'] = 0;
             $this->saveState('account', $syncStartTime, $result);
+        } else {
+            $this->offsets['account'] = $offset + $count;
         }
 
         $this->logger->info('Batch account sync completed', [
             'total' => $result->getTotalCount(),
             'created' => $result->getCreatedCount(),
             'updated' => $result->getUpdatedCount(),
+            'skipped' => $result->getSkippedCount(),
             'failed' => $result->getFailedCount(),
             'incremental' => $since !== null,
         ]);
@@ -197,12 +208,13 @@ final class BatchSync
 
         $since = $this->resolveSince('activity');
         $syncStartTime = new \DateTimeImmutable();
+        $offset = $this->offsets['activity'] ?? 0;
         $result = new SyncResult();
         $count = 0;
         $exhausted = true;
 
         foreach ($activityTypes as $type) {
-            foreach ($this->ccAdapter->iterateActivities($type, $since) as $activity) {
+            foreach ($this->ccAdapter->iterateActivities($type, $since, $offset) as $activity) {
                 $record = $this->syncActivityToCrm($activity, $mapping);
                 $result->addRecord($record);
                 $count++;
@@ -214,10 +226,14 @@ final class BatchSync
             }
         }
 
+        $result->setExhausted($exhausted);
         $result->finish();
 
         if ($exhausted) {
+            $this->offsets['activity'] = 0;
             $this->saveState('activity', $syncStartTime, $result);
+        } else {
+            $this->offsets['activity'] = $offset + $count;
         }
 
         $this->logger->info('Batch activity sync completed', [
@@ -241,17 +257,29 @@ final class BatchSync
         callable $upsertFn,
     ): RecordResult {
         try {
+            $this->ensureMappingRelations($entity, $mapping);
+
             $mapped = $this->fieldMapper->map($entity, $mapping, SyncDirection::CrmToCc, $this->relationMaps);
             $result = $upsertFn($mapping->lookupField, $mapped);
 
-            $wasCreated = $entity->getId() !== $result->getId();
+            $wasSkipped = $result->get('_syncSkipped') === true;
+            $wasCreated = !$wasSkipped && ($entity->getId() !== $result->getId());
 
-            return new RecordResult(
+            $record = new RecordResult(
                 entityType: $entityType,
                 sourceId: $entity->getId(),
                 targetId: $result->getId(),
-                status: $wasCreated ? SyncStatus::Created : SyncStatus::Updated,
+                status: $wasSkipped
+                    ? SyncStatus::Skipped
+                    : ($wasCreated ? SyncStatus::Created : SyncStatus::Updated),
             );
+
+            if ($record->status !== SyncStatus::Failed && $entity->getId() !== null && $record->targetId !== null) {
+                $this->relationMaps[$entityType] ??= [];
+                $this->relationMaps[$entityType][(string) $entity->getId()] = $record->targetId;
+            }
+
+            return $record;
         } catch (\Throwable $e) {
             $this->logger->error('Failed to sync {type} {id}: {error}', [
                 'type' => $entityType,
@@ -302,6 +330,95 @@ final class BatchSync
                 status: SyncStatus::Failed,
                 errorMessage: $e->getMessage(),
             );
+        }
+    }
+
+    /**
+     * @return callable(string, array<string, mixed>): EntityInterface|null
+     */
+    private function buildUpsertFn(string $entityType): ?callable
+    {
+        return match ($entityType) {
+            'account' => fn (string $lookupField, array $data) => $this->ccAdapter->upsertAccount(
+                $lookupField,
+                \Daktela\CrmSync\Entity\Account::fromArray($data),
+            ),
+            'contact' => fn (string $lookupField, array $data) => $this->ccAdapter->upsertContact(
+                $lookupField,
+                \Daktela\CrmSync\Entity\Contact::fromArray($data),
+            ),
+            default => null,
+        };
+    }
+
+    private function findCrmEntity(string $entityType, string $id): ?EntityInterface
+    {
+        return match ($entityType) {
+            'account' => $this->crmAdapter->findAccount($id),
+            'contact' => $this->crmAdapter->findContact($id),
+            default => null,
+        };
+    }
+
+    private function ensureCrmEntityInCc(string $entityType, string $crmId): ?RecordResult
+    {
+        if (isset($this->relationMaps[$entityType][$crmId])) {
+            return null;
+        }
+
+        $guardKey = $entityType . ':' . $crmId;
+        if (isset($this->syncingEntities[$guardKey])) {
+            return null;
+        }
+
+        $this->syncingEntities[$guardKey] = true;
+
+        try {
+            $entity = $this->findCrmEntity($entityType, $crmId);
+            if ($entity === null) {
+                $this->logger->warning('Cannot auto-create {type} {id}: not found in CRM', [
+                    'type' => $entityType,
+                    'id' => $crmId,
+                ]);
+                return null;
+            }
+
+            $mapping = $this->config->getMapping($entityType);
+            if ($mapping === null) {
+                return null;
+            }
+
+            $upsertFn = $this->buildUpsertFn($entityType);
+            if ($upsertFn === null) {
+                return null;
+            }
+
+            return $this->syncEntityToCc(
+                entity: $entity,
+                mapping: $mapping,
+                entityType: $entityType,
+                upsertFn: $upsertFn,
+            );
+        } finally {
+            unset($this->syncingEntities[$guardKey]);
+        }
+    }
+
+    private function ensureMappingRelations(EntityInterface $entity, MappingCollection $mapping): void
+    {
+        foreach ($mapping->mappings as $fieldMapping) {
+            if ($fieldMapping->relation === null) {
+                continue;
+            }
+
+            $value = $this->fieldMapper->readNestedValue($entity, $fieldMapping->crmField);
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (!isset($this->relationMaps[$fieldMapping->relation->entity][(string) $value])) {
+                $this->ensureCrmEntityInCc($fieldMapping->relation->entity, (string) $value);
+            }
         }
     }
 

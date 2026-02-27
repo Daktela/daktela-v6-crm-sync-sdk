@@ -65,6 +65,13 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         $existing = $this->findContactBy([$lookupField => (string) $lookupValue]);
 
         if ($existing !== null && $existing->getId() !== null) {
+            if (!$this->hasChanges($existing->getData(), $contact->getData())) {
+                $this->logger->debug('Skip contact update: no changes', ['id' => $existing->getId()]);
+                $existing->set('_syncSkipped', true);
+
+                return $existing;
+            }
+
             return $this->updateContact($existing->getId(), $contact);
         }
 
@@ -106,6 +113,13 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         $existing = $this->findAccountBy([$lookupField => (string) $lookupValue]);
 
         if ($existing !== null && $existing->getId() !== null) {
+            if (!$this->hasChanges($existing->getData(), $account->getData())) {
+                $this->logger->debug('Skip account update: no changes', ['id' => $existing->getId()]);
+                $existing->set('_syncSkipped', true);
+
+                return $existing;
+            }
+
             return $this->updateAccount($existing->getId(), $account);
         }
 
@@ -124,7 +138,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
     }
 
     /** @return \Generator<int, Activity> */
-    public function iterateActivities(ActivityType $type, ?\DateTimeImmutable $since = null): \Generator
+    public function iterateActivities(ActivityType $type, ?\DateTimeImmutable $since = null, int $offset = 0): \Generator
     {
         $request = RequestFactory::buildReadRequest(self::ACTIVITIES_MODEL);
         $request->addFilter('type', 'eq', strtoupper($type->value));
@@ -133,39 +147,79 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
             $request->addFilter('time', 'gte', $since->format('Y-m-d H:i:s'));
         }
 
-        $iterator = $this->client->iterate($request);
+        $pageSize = 100;
+        $currentOffset = $offset;
 
-        foreach ($iterator as $item) {
-            $data = is_array($item) ? $item : (array) $item;
-            $data['id'] = $data['name'] ?? $data['id'] ?? null;
+        while (true) {
+            $pageRequest = clone $request;
+            $pageRequest->setSkip($currentOffset);
+            $pageRequest->setTake($pageSize);
 
-            // Flatten nested user fields for mapping
-            if (isset($data['user']) && (is_array($data['user']) || is_object($data['user']))) {
-                $user = (array) $data['user'];
-                // Prefer notification email, fall back to auth email
-                $email = !empty($user['email']) ? $user['email'] : null;
-                $emailAuth = !empty($user['emailAuth']) ? $user['emailAuth'] : null;
-                $data['user_email'] = $email ?? $emailAuth;
-                $data['user_login'] = $user['name'] ?? null;
-                $data['user_title'] = $user['title'] ?? null;
+            $response = $this->client->execute($pageRequest);
+
+            if ($response->hasErrors() || $response->isEmpty()) {
+                return;
             }
 
-            // Flatten nested contact reference for mapping
-            if (isset($data['contact']) && (is_array($data['contact']) || is_object($data['contact']))) {
-                $contact = (array) $data['contact'];
-                $data['contact_name'] = $contact['name'] ?? null;
+            $data = $response->getData();
+            if (!is_array($data) || $data === []) {
+                return;
             }
 
-            $activity = Activity::fromArray($data);
-            $activity->setActivityType($type);
+            foreach ($data as $item) {
+                $row = is_array($item) ? $item : (array) $item;
+                $row['id'] = $row['name'] ?? $row['id'] ?? null;
 
-            yield $activity;
+                // Flatten nested user fields for mapping
+                if (isset($row['user']) && (is_array($row['user']) || is_object($row['user']))) {
+                    $user = (array) $row['user'];
+                    // Prefer notification email, fall back to auth email
+                    $email = !empty($user['email']) ? $user['email'] : null;
+                    $emailAuth = !empty($user['emailAuth']) ? $user['emailAuth'] : null;
+                    $row['user_email'] = $email ?? $emailAuth;
+                    $row['user_login'] = $user['name'] ?? null;
+                    $row['user_title'] = $user['title'] ?? null;
+                }
+
+                // Flatten nested contact reference for mapping
+                if (isset($row['contact']) && (is_array($row['contact']) || is_object($row['contact']))) {
+                    $contact = (array) $row['contact'];
+                    $row['contact_name'] = $contact['name'] ?? null;
+                }
+
+                $activity = Activity::fromArray($row);
+                $activity->setActivityType($type);
+
+                yield $activity;
+            }
+
+            if (count($data) < $pageSize) {
+                return;
+            }
+
+            $currentOffset += $pageSize;
         }
     }
 
     public function ping(): bool
     {
         return $this->client->ping();
+    }
+
+    /**
+     * @param array<string, mixed> $existing
+     * @param array<string, mixed> $new
+     */
+    private function hasChanges(array $existing, array $new): bool
+    {
+        foreach ($new as $key => $value) {
+            $existingValue = $existing[$key] ?? null;
+            if ($existingValue != $value) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

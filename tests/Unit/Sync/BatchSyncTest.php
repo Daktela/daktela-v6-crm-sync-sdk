@@ -412,6 +412,82 @@ final class BatchSyncTest extends TestCase
         $batchSync->syncContacts();
     }
 
+    public function testSkippedContactIsTrackedAsSyncStatusSkipped(): void
+    {
+        $contacts = [
+            Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']),
+        ];
+
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
+
+        // Simulate adapter returning an entity with _syncSkipped flag (no changes detected)
+        $ccAdapter->method('upsertContact')
+            ->willReturnCallback(function ($lookup, $contact) {
+                $existing = Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-1']));
+                $existing->set('_syncSkipped', true);
+
+                return $existing;
+            });
+
+        $batchSync = new BatchSync(
+            $ccAdapter,
+            $crmAdapter,
+            new FieldMapper(TransformerRegistry::withDefaults()),
+            $this->createConfig(),
+            new NullLogger(),
+        );
+
+        $result = $batchSync->syncContacts();
+
+        self::assertSame(1, $result->getTotalCount());
+        self::assertSame(1, $result->getSkippedCount());
+        self::assertSame(0, $result->getCreatedCount());
+        self::assertSame(0, $result->getUpdatedCount());
+        self::assertSame(SyncStatus::Skipped, $result->getRecords()[0]->status);
+    }
+
+    public function testSkippedAccountStillPopulatesRelationMap(): void
+    {
+        $crmAccounts = [
+            Account::fromArray(['id' => 'acc-1', 'company_name' => 'Acme', 'external_id' => 'acme']),
+        ];
+
+        $ccAdapter = $this->createMock(ContactCentreAdapterInterface::class);
+        $crmAdapter = $this->createMock(CrmAdapterInterface::class);
+
+        $crmAdapter->method('iterateAccounts')->willReturn($this->gen($crmAccounts));
+
+        // Simulate adapter returning skipped entity
+        $ccAdapter->method('upsertAccount')
+            ->willReturnCallback(function ($lookup, $account) {
+                $existing = Account::fromArray(array_merge($account->toArray(), ['id' => 'cc-acc-1']));
+                $existing->set('_syncSkipped', true);
+
+                return $existing;
+            });
+
+        $batchSync = new BatchSync(
+            $ccAdapter,
+            $crmAdapter,
+            new FieldMapper(TransformerRegistry::withDefaults()),
+            $this->createConfigWithRelations(),
+            new NullLogger(),
+        );
+
+        $result = $batchSync->syncAccounts();
+
+        self::assertSame(1, $result->getSkippedCount());
+        self::assertSame(0, $result->getUpdatedCount());
+
+        // Relation map should still be populated for skipped records
+        $maps = $batchSync->getRelationMaps();
+        self::assertArrayHasKey('account', $maps);
+        self::assertSame('cc-acc-1', $maps['account']['acc-1']);
+    }
+
     private function createConfig(int $batchSize = 100): SyncConfiguration
     {
         $contactMapping = new MappingCollection('contact', 'email', [

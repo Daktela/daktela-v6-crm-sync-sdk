@@ -6,10 +6,9 @@ The `SyncEngine` orchestrates syncing between adapters using field mappings.
 
 The `fullSync()` method handles all entity types in the correct dependency order:
 
-1. **Accounts** (CRM → Daktela) — synced first
-2. **Relation maps built** — maps CRM account IDs to Daktela account names
-3. **Contacts** (CRM → Daktela) — account references resolved automatically
-4. **Activities** (Daktela → CRM)
+1. **Accounts** (CRM → Daktela) — synced first, relation map populated automatically
+2. **Contacts** (CRM → Daktela) — account references resolved via relation map; missing accounts auto-fetched on-the-fly
+3. **Activities** (Daktela → CRM)
 
 ```php
 $results = $engine->fullSync();
@@ -44,9 +43,9 @@ $result = $engine->syncActivitiesBatch();
 $result = $engine->syncActivitiesBatch([ActivityType::Call, ActivityType::Email]);
 ```
 
-**Important:** When syncing individually, sync accounts before contacts if your contact mappings have relation configs. `fullSync()` handles this automatically.
+**Note:** If a contact references an account that hasn't been synced yet, `BatchSync` automatically fetches it from the CRM and syncs it on-the-fly. Syncing accounts before contacts is still recommended for efficiency (avoids per-contact lookups), but is no longer required.
 
-Batch sync respects the `batch_size` setting in configuration.
+Batch sync respects the `batch_size` setting in configuration. Each call processes up to `batch_size` records and tracks its offset internally, so the next call continues where the previous one left off. `fullSync()` automatically loops through all records in batches, while individual batch methods (`syncContactsBatch()`, `syncAccountsBatch()`, `syncActivitiesBatch()`) process a single batch per call — callers can loop externally if needed.
 
 ## Single-Record Sync
 
@@ -71,6 +70,8 @@ $result->getFailedCount();   // Records that failed
 $result->getDuration();      // Time in seconds
 $result->getRecords();       // All RecordResult objects
 $result->getFailedRecords(); // Only failed RecordResult objects
+$result->isExhausted();      // True if all source records were processed (no more batches)
+$result->merge($other);      // Merge another SyncResult into this one (used by fullSync internally)
 ```
 
 Each `RecordResult` contains:
@@ -101,7 +102,7 @@ The SDK resolves this automatically when you:
     resolve_to: name       # Daktela account field to use
 ```
 
-2. Use `fullSync()` or sync accounts before contacts.
+2. Use `fullSync()` (recommended) or sync accounts before contacts. If a contact references an account not yet in the relation map, the engine automatically fetches it from the CRM and syncs it on-the-fly.
 
 The engine builds a map like:
 ```
@@ -129,6 +130,15 @@ if ($result->getFailedCount() > 0) {
     }
 }
 ```
+
+## Change Detection
+
+When upserting contacts and accounts to Daktela, the adapter compares mapped field values against the existing record. If no fields have changed, the PUT API call is skipped entirely and the record is counted as "skipped" in `SyncResult`. This saves one API call per unchanged record during incremental syncs.
+
+- **Record with changes:** 1 find + 1 PUT = 2 API calls (same as before)
+- **Record with no changes:** 1 find = 1 API call (saves 1 PUT)
+
+Skipped records are still tracked in relation maps and appear in `SyncResult::getSkippedCount()`.
 
 ## Custom Transformer Registry
 
