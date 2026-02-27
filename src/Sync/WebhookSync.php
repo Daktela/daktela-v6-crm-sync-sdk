@@ -50,9 +50,10 @@ final class WebhookSync
 
             $relationMaps = $this->buildRelationMapsForEntity($contact, $mapping);
             $mapped = $this->fieldMapper->map($contact, $mapping, SyncDirection::CrmToCc, $relationMaps);
-            $synced = $this->ccAdapter->upsertContact($mapping->lookupField, Contact::fromArray($mapped));
+            $upsertResult = $this->ccAdapter->upsertContact($mapping->lookupField, Contact::fromArray($mapped));
 
-            $result->addRecord(new RecordResult('contact', $id, $synced->getId(), SyncStatus::Updated));
+            $status = $upsertResult->skipped ? SyncStatus::Skipped : SyncStatus::Updated;
+            $result->addRecord(new RecordResult('contact', $id, $upsertResult->entity->getId(), $status));
         } catch (\Throwable $e) {
             $this->logger->error('Webhook sync failed for contact {id}: {error}', [
                 'id' => $id,
@@ -84,9 +85,10 @@ final class WebhookSync
             }
 
             $mapped = $this->fieldMapper->map($account, $mapping, SyncDirection::CrmToCc);
-            $synced = $this->ccAdapter->upsertAccount($mapping->lookupField, Account::fromArray($mapped));
+            $upsertResult = $this->ccAdapter->upsertAccount($mapping->lookupField, Account::fromArray($mapped));
 
-            $result->addRecord(new RecordResult('account', $id, $synced->getId(), SyncStatus::Updated));
+            $status = $upsertResult->skipped ? SyncStatus::Skipped : SyncStatus::Updated;
+            $result->addRecord(new RecordResult('account', $id, $upsertResult->entity->getId(), $status));
         } catch (\Throwable $e) {
             $this->logger->error('Webhook sync failed for account {id}: {error}', [
                 'id' => $id,

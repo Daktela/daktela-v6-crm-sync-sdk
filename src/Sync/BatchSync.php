@@ -6,6 +6,7 @@ namespace Daktela\CrmSync\Sync;
 
 use Daktela\CrmSync\Adapter\ContactCentreAdapterInterface;
 use Daktela\CrmSync\Adapter\CrmAdapterInterface;
+use Daktela\CrmSync\Adapter\UpsertResult;
 use Daktela\CrmSync\Config\SyncConfiguration;
 use Daktela\CrmSync\Entity\Activity;
 use Daktela\CrmSync\Entity\ActivityType;
@@ -248,7 +249,7 @@ final class BatchSync
     }
 
     /**
-     * @param callable(string, array<string, mixed>): EntityInterface $upsertFn
+     * @param callable(string, array<string, mixed>): UpsertResult $upsertFn
      */
     private function syncEntityToCc(
         EntityInterface $entity,
@@ -260,16 +261,16 @@ final class BatchSync
             $this->ensureMappingRelations($entity, $mapping);
 
             $mapped = $this->fieldMapper->map($entity, $mapping, SyncDirection::CrmToCc, $this->relationMaps);
-            $result = $upsertFn($mapping->lookupField, $mapped);
+            $upsertResult = $upsertFn($mapping->lookupField, $mapped);
+            $synced = $upsertResult->entity;
 
-            $wasSkipped = $result->get('_syncSkipped') === true;
-            $wasCreated = !$wasSkipped && ($entity->getId() !== $result->getId());
+            $wasCreated = !$upsertResult->skipped && ($entity->getId() !== $synced->getId());
 
             $record = new RecordResult(
                 entityType: $entityType,
                 sourceId: $entity->getId(),
-                targetId: $result->getId(),
-                status: $wasSkipped
+                targetId: $synced->getId(),
+                status: $upsertResult->skipped
                     ? SyncStatus::Skipped
                     : ($wasCreated ? SyncStatus::Created : SyncStatus::Updated),
             );
@@ -334,7 +335,7 @@ final class BatchSync
     }
 
     /**
-     * @return callable(string, array<string, mixed>): EntityInterface|null
+     * @return callable(string, array<string, mixed>): UpsertResult|null
      */
     private function buildUpsertFn(string $entityType): ?callable
     {

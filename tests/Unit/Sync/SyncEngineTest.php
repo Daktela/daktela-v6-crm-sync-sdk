@@ -6,6 +6,7 @@ namespace Daktela\CrmSync\Tests\Unit\Sync;
 
 use Daktela\CrmSync\Adapter\ContactCentreAdapterInterface;
 use Daktela\CrmSync\Adapter\CrmAdapterInterface;
+use Daktela\CrmSync\Adapter\UpsertResult;
 use Daktela\CrmSync\Config\EntitySyncConfig;
 use Daktela\CrmSync\Config\SyncConfiguration;
 use Daktela\CrmSync\Entity\Account;
@@ -37,9 +38,9 @@ final class SyncEngineTest extends TestCase
         $crmAdapter->method('iterateContacts')->willReturn($this->arrayToGenerator($crmContacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn (string $lookup, Contact $contact) => Contact::fromArray(
+            ->willReturnCallback(fn (string $lookup, Contact $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-' . $contact->get('email')]),
-            ));
+            )));
 
         $engine = new SyncEngine(
             $ccAdapter,
@@ -66,9 +67,9 @@ final class SyncEngineTest extends TestCase
         $crmAdapter->method('iterateAccounts')->willReturn($this->arrayToGenerator($crmAccounts));
 
         $ccAdapter->method('upsertAccount')
-            ->willReturnCallback(fn (string $lookup, Account $account) => Account::fromArray(
+            ->willReturnCallback(fn (string $lookup, Account $account) => new UpsertResult(Account::fromArray(
                 array_merge($account->toArray(), ['id' => 'cc-account-1']),
-            ));
+            )));
 
         $engine = new SyncEngine(
             $ccAdapter,
@@ -122,7 +123,7 @@ final class SyncEngineTest extends TestCase
             ->willReturn(Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']));
 
         $ccAdapter->method('upsertContact')
-            ->willReturn(Contact::fromArray(['id' => 'cc-1']));
+            ->willReturn(new UpsertResult(Contact::fromArray(['id' => 'cc-1'])));
 
         $engine = new SyncEngine(
             $ccAdapter,
@@ -182,14 +183,14 @@ final class SyncEngineTest extends TestCase
         ]));
 
         $ccAdapter->method('upsertAccount')
-            ->willReturnCallback(fn (string $lookup, Account $account) => Account::fromArray(
+            ->willReturnCallback(fn (string $lookup, Account $account) => new UpsertResult(Account::fromArray(
                 array_merge($account->toArray(), ['id' => 'cc-acc-1']),
-            ));
+            )));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn (string $lookup, Contact $contact) => Contact::fromArray(
+            ->willReturnCallback(fn (string $lookup, Contact $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-c-1']),
-            ));
+            )));
 
         $crmAdapter->method('upsertActivity')
             ->willReturnCallback(fn (string $lookup, Activity $activity) => Activity::fromArray(
@@ -229,9 +230,9 @@ final class SyncEngineTest extends TestCase
         ]));
 
         $ccAdapter->method('upsertAccount')
-            ->willReturnCallback(fn ($lookup, $account) => Account::fromArray(
+            ->willReturnCallback(fn ($lookup, $account) => new UpsertResult(Account::fromArray(
                 array_merge($account->toArray(), ['id' => 'cc-acc-1']),
-            ));
+            )));
 
         // Capture the contact that gets upserted to verify account reference is resolved
         $ccAdapter->expects(self::once())
@@ -239,7 +240,7 @@ final class SyncEngineTest extends TestCase
             ->willReturnCallback(function (string $lookup, Contact $contact) {
                 // The company_id 'acc-1' should be resolved to 'cc-acc-1' (the CC target ID)
                 self::assertSame('cc-acc-1', $contact->get('account'));
-                return Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-c-1']));
+                return new UpsertResult(Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-c-1'])));
             });
 
         $engine = new SyncEngine(
@@ -267,9 +268,9 @@ final class SyncEngineTest extends TestCase
         ]));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-1']),
-            ));
+            )));
 
         $config = $this->createConfigWithDisabledAccount();
 

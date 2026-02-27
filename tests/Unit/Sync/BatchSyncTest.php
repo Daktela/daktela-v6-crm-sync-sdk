@@ -6,6 +6,7 @@ namespace Daktela\CrmSync\Tests\Unit\Sync;
 
 use Daktela\CrmSync\Adapter\ContactCentreAdapterInterface;
 use Daktela\CrmSync\Adapter\CrmAdapterInterface;
+use Daktela\CrmSync\Adapter\UpsertResult;
 use Daktela\CrmSync\Config\EntitySyncConfig;
 use Daktela\CrmSync\Config\SyncConfiguration;
 use Daktela\CrmSync\Entity\Account;
@@ -43,9 +44,9 @@ final class BatchSyncTest extends TestCase
         $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-new']),
-            ));
+            )));
 
         $config = $this->createConfig(batchSize: 5);
         $batchSync = new BatchSync(
@@ -158,9 +159,9 @@ final class BatchSyncTest extends TestCase
         $crmAdapter->method('iterateAccounts')->willReturn($this->gen($crmAccounts));
 
         $ccAdapter->method('upsertAccount')
-            ->willReturnCallback(fn ($lookup, $account) => Account::fromArray(
+            ->willReturnCallback(fn ($lookup, $account) => new UpsertResult(Account::fromArray(
                 array_merge($account->toArray(), ['id' => 'cc-acc-1']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -197,9 +198,9 @@ final class BatchSyncTest extends TestCase
             ->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-1']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -228,9 +229,9 @@ final class BatchSyncTest extends TestCase
             ->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-1']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -261,9 +262,9 @@ final class BatchSyncTest extends TestCase
             ->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-1']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -296,9 +297,9 @@ final class BatchSyncTest extends TestCase
         $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-1']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -361,9 +362,9 @@ final class BatchSyncTest extends TestCase
         $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-new']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -396,9 +397,9 @@ final class BatchSyncTest extends TestCase
             ->willReturn($this->gen($contacts));
 
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(fn ($lookup, $contact) => Contact::fromArray(
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(Contact::fromArray(
                 array_merge($contact->toArray(), ['id' => 'cc-1']),
-            ));
+            )));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -423,14 +424,12 @@ final class BatchSyncTest extends TestCase
 
         $crmAdapter->method('iterateContacts')->willReturn($this->gen($contacts));
 
-        // Simulate adapter returning an entity with _syncSkipped flag (no changes detected)
+        // Simulate adapter returning UpsertResult with skipped flag (no changes detected)
         $ccAdapter->method('upsertContact')
-            ->willReturnCallback(function ($lookup, $contact) {
-                $existing = Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-1']));
-                $existing->set('_syncSkipped', true);
-
-                return $existing;
-            });
+            ->willReturnCallback(fn ($lookup, $contact) => new UpsertResult(
+                Contact::fromArray(array_merge($contact->toArray(), ['id' => 'cc-1'])),
+                skipped: true,
+            ));
 
         $batchSync = new BatchSync(
             $ccAdapter,
@@ -460,14 +459,12 @@ final class BatchSyncTest extends TestCase
 
         $crmAdapter->method('iterateAccounts')->willReturn($this->gen($crmAccounts));
 
-        // Simulate adapter returning skipped entity
+        // Simulate adapter returning UpsertResult with skipped flag (no changes detected)
         $ccAdapter->method('upsertAccount')
-            ->willReturnCallback(function ($lookup, $account) {
-                $existing = Account::fromArray(array_merge($account->toArray(), ['id' => 'cc-acc-1']));
-                $existing->set('_syncSkipped', true);
-
-                return $existing;
-            });
+            ->willReturnCallback(fn ($lookup, $account) => new UpsertResult(
+                Account::fromArray(array_merge($account->toArray(), ['id' => 'cc-acc-1'])),
+                skipped: true,
+            ));
 
         $batchSync = new BatchSync(
             $ccAdapter,

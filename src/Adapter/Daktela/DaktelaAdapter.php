@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Daktela\CrmSync\Adapter\Daktela;
 
 use Daktela\CrmSync\Adapter\ContactCentreAdapterInterface;
+use Daktela\CrmSync\Adapter\UpsertResult;
 use Daktela\CrmSync\Entity\Account;
 use Daktela\CrmSync\Entity\Activity;
 use Daktela\CrmSync\Entity\ActivityType;
@@ -55,7 +56,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         return Contact::fromArray($data);
     }
 
-    public function upsertContact(string $lookupField, Contact $contact): Contact
+    public function upsertContact(string $lookupField, Contact $contact): UpsertResult
     {
         $lookupValue = $contact->get($lookupField);
         if ($lookupValue === null) {
@@ -67,15 +68,14 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         if ($existing !== null && $existing->getId() !== null) {
             if (!$this->hasChanges($existing->getData(), $contact->getData())) {
                 $this->logger->debug('Skip contact update: no changes', ['id' => $existing->getId()]);
-                $existing->set('_syncSkipped', true);
 
-                return $existing;
+                return new UpsertResult($existing, skipped: true);
             }
 
-            return $this->updateContact($existing->getId(), $contact);
+            return new UpsertResult($this->updateContact($existing->getId(), $contact));
         }
 
-        return $this->createContact($contact);
+        return new UpsertResult($this->createContact($contact));
     }
 
     public function findAccount(string $id): ?Account
@@ -103,7 +103,7 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         return Account::fromArray($data);
     }
 
-    public function upsertAccount(string $lookupField, Account $account): Account
+    public function upsertAccount(string $lookupField, Account $account): UpsertResult
     {
         $lookupValue = $account->get($lookupField);
         if ($lookupValue === null) {
@@ -115,15 +115,14 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         if ($existing !== null && $existing->getId() !== null) {
             if (!$this->hasChanges($existing->getData(), $account->getData())) {
                 $this->logger->debug('Skip account update: no changes', ['id' => $existing->getId()]);
-                $existing->set('_syncSkipped', true);
 
-                return $existing;
+                return new UpsertResult($existing, skipped: true);
             }
 
-            return $this->updateAccount($existing->getId(), $account);
+            return new UpsertResult($this->updateAccount($existing->getId(), $account));
         }
 
-        return $this->createAccount($account);
+        return new UpsertResult($this->createAccount($account));
     }
 
     public function findActivity(string $id, ActivityType $type): ?Activity

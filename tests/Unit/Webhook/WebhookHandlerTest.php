@@ -6,6 +6,7 @@ namespace Daktela\CrmSync\Tests\Unit\Webhook;
 
 use Daktela\CrmSync\Adapter\ContactCentreAdapterInterface;
 use Daktela\CrmSync\Adapter\CrmAdapterInterface;
+use Daktela\CrmSync\Adapter\UpsertResult;
 use Daktela\CrmSync\Config\EntitySyncConfig;
 use Daktela\CrmSync\Config\SyncConfiguration;
 use Daktela\CrmSync\Entity\Contact;
@@ -94,7 +95,7 @@ final class WebhookHandlerTest extends TestCase
             ->willReturn(Contact::fromArray(['id' => 'crm-1', 'full_name' => 'John', 'email' => 'john@test.com']));
 
         $ccAdapter->method('upsertContact')
-            ->willReturn(Contact::fromArray(['id' => 'cc-1']));
+            ->willReturn(new UpsertResult(Contact::fromArray(['id' => 'cc-1'])));
 
         $contactMapping = new MappingCollection('contact', 'email', [
             new FieldMapping('title', 'full_name'),

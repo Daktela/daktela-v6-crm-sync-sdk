@@ -21,7 +21,7 @@ interface ContactCentreAdapterInterface
 
     public function updateContact(string $id, Contact $contact): Contact;
 
-    public function upsertContact(string $lookupField, Contact $contact): Contact;
+    public function upsertContact(string $lookupField, Contact $contact): UpsertResult;
 
     // Accounts (writable — CRM is source-of-truth, CC receives data)
     public function findAccount(string $id): ?Account;
@@ -33,13 +33,13 @@ interface ContactCentreAdapterInterface
 
     public function updateAccount(string $id, Account $account): Account;
 
-    public function upsertAccount(string $lookupField, Account $account): Account;
+    public function upsertAccount(string $lookupField, Account $account): UpsertResult;
 
     // Activities (read-only — CC is source-of-truth)
     public function findActivity(string $id, ActivityType $type): ?Activity;
 
     /** @return \Generator<int, Activity> */
-    public function iterateActivities(ActivityType $type, ?\DateTimeImmutable $since = null): \Generator;
+    public function iterateActivities(ActivityType $type, ?\DateTimeImmutable $since = null, int $offset = 0): \Generator;
 
     public function ping(): bool;
 }
