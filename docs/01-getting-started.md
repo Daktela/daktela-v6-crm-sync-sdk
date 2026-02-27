@@ -156,7 +156,7 @@ $engine->testConnections();
 // Full sync (recommended — handles dependencies automatically)
 $results = $engine->fullSync();
 
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     echo $result->getSummary(ucfirst($type)) . "\n";
 }
 // Output: Account: 42 total, 5 created, 10 updated, 25 skipped, 2 failed (1.23s)

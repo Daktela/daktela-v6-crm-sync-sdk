@@ -37,7 +37,7 @@ if ($forceFull) {
 
 $results = $engine->fullSync(forceFullSync: $forceFull);
 
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     $logger->info($result->getSummary(ucfirst($type)));
 }
 

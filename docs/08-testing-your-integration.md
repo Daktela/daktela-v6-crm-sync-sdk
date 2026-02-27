@@ -176,8 +176,9 @@ public function testFullSyncResolvesAccountReferences(): void
     $engine = new SyncEngine($ccAdapter, $crmAdapter, $config, new NullLogger());
     $results = $engine->fullSync();
 
-    self::assertArrayHasKey('account', $results);
-    self::assertArrayHasKey('contact', $results);
+    self::assertNotNull($results->account);
+    self::assertNotNull($results->contact);
+    self::assertSame(0, $results->contact->getFailedCount());
 }
 ```
 

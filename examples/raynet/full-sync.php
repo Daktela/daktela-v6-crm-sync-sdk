@@ -17,7 +17,7 @@ $logger->info('Starting full sync...');
 
 $results = $engine->fullSync();
 
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     $logger->info($result->getSummary(ucfirst($type)));
 }
 

@@ -78,12 +78,11 @@ $engine = new SyncEngine(
 
 ### Safety Guarantees
 
-State is **only** saved when both conditions are met:
+The engine automatically loops through all batches for each entity type. State is **only** saved after all batches complete, and only when:
 
-- **No failures** — if any record fails to sync, the timestamp is not updated (so the next run retries all records from the same point)
-- **Batch exhausted** — if the number of records hits the `batch_size` limit, the timestamp is not updated (there may be more records to process)
+- **No failures** — if any record fails to sync in any batch, the timestamp is not updated (so the next run retries all records from the same point)
 
-This means the engine will never skip records due to a partial sync.
+This means the engine will never skip records due to a partial sync or per-batch failures.
 
 ### State File
 
@@ -146,7 +145,7 @@ $engine->testConnections();
 $results = $engine->fullSync(forceFullSync: $forceFullSync);
 
 $hasFailures = false;
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     fprintf(STDERR, "%s\n", $result->getSummary(ucfirst($type)));
 
     if ($result->getFailedCount() > 0) {
@@ -337,7 +336,7 @@ $engine->resetState('contact');
 Check `SyncResult` for failures after each run:
 
 ```php
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     echo $result->getSummary(ucfirst($type)) . "\n";
     // Output: Contact: 150 total, 5 created, 10 updated, 130 skipped, 5 failed (2.34s)
 

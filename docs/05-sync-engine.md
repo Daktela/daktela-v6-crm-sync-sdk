@@ -15,7 +15,7 @@ $engine = $factory->getEngine();
 $engine->testConnections();
 
 $results = $engine->fullSync();
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     echo $result->getSummary(ucfirst($type)) . "\n";
 }
 ```
@@ -41,7 +41,7 @@ The `fullSync()` method handles all entity types in the correct dependency order
 ```php
 $results = $engine->fullSync();
 
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     echo $result->getSummary(ucfirst($type)) . "\n";
 }
 ```
@@ -66,7 +66,13 @@ $result = $engine->syncActivitiesBatch([ActivityType::Call, ActivityType::Email]
 
 **Note:** If a contact references an account that hasn't been synced yet, `BatchSync` automatically fetches it from the CRM and syncs it on-the-fly. Syncing accounts before contacts is still recommended for efficiency (avoids per-contact lookups), but is no longer required.
 
-Batch sync respects the `batch_size` setting in configuration. Each call processes up to `batch_size` records and tracks its offset internally, so the next call continues where the previous one left off. `fullSync()` automatically loops through all records in batches, while individual batch methods (`syncContactsBatch()`, `syncAccountsBatch()`, `syncActivitiesBatch()`) process a single batch per call — callers can loop externally if needed.
+All batch methods (`fullSync()`, `syncContactsBatch()`, `syncAccountsBatch()`, `syncActivitiesBatch()`) automatically loop through all records in batches of `batch_size`. Each method accepts an optional `onBatch` callback for per-batch progress reporting:
+
+```php
+$result = $engine->syncContactsBatch(function (string $entityType, SyncResult $batch) use ($logger) {
+    $logger->info($batch->getSummary(ucfirst($entityType)));
+});
+```
 
 ## Single-Record Sync
 
@@ -93,7 +99,6 @@ $result->getRecords();       // All RecordResult objects
 $result->getFailedRecords(); // Only failed RecordResult objects
 $result->getSummary('Label'); // "Label: 5 total, 2 created, 1 updated, 1 skipped, 1 failed (0.12s)"
 $result->isExhausted();      // True if all source records were processed (no more batches)
-$result->merge($other);      // Merge another SyncResult into this one (used by fullSync internally)
 ```
 
 Each `RecordResult` contains:
@@ -198,7 +203,7 @@ $engine = new SyncEngine(
 
 **When state is saved:**
 
-State is saved only when the batch completes successfully — meaning all records were processed (batch limit not hit) and none failed. This prevents skipping records due to partial syncs. See the [Production Deployment](09-production-deployment.md) guide for details on safety guarantees.
+State is saved after all batches for an entity type have been processed, but only if zero records failed across the entire run. If any record fails in any batch, the timestamp is not updated — the next run retries from the same point. See the [Production Deployment](09-production-deployment.md) guide for details on safety guarantees.
 
 ## Auto-Create Contact from Account
 

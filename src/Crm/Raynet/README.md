@@ -28,7 +28,7 @@ $engine = $factory->getEngine();
 $engine->testConnections();
 
 $results = $engine->fullSync();
-foreach ($results as $type => $result) {
+foreach ($results->toArray() as $type => $result) {
     echo $result->getSummary(ucfirst($type)) . "\n";
 }
 ```
