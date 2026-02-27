@@ -98,5 +98,17 @@ final class DaktelaAdapterTest extends TestCase
             ['priority' => '123'],
             false,
         ];
+
+        yield 'nested customFields with phone spaces and url array' => [
+            ['customFields' => ['phone' => '+420553401520', 'web' => ['https://example.com']]],
+            ['customFields' => ['phone' => '+420 553 401 520', 'web' => 'https://example.com']],
+            false,
+        ];
+
+        yield 'nested customFields with actual change' => [
+            ['customFields' => ['phone' => '+420553401520']],
+            ['customFields' => ['phone' => '+421999888777']],
+            true,
+        ];
     }
 }

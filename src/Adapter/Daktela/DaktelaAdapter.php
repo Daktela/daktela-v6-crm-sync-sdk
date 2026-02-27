@@ -224,13 +224,18 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
 
     /**
      * Normalize a value for comparison to account for Daktela API transformations:
-     * - Single-element arrays are unwrapped (Daktela wraps some string fields in arrays)
-     * - Strings are trimmed and whitespace is collapsed (Daktela strips spaces from phones etc.)
+     * - Single-element lists are unwrapped (Daktela wraps some string fields in arrays)
+     * - Associative arrays are normalized recursively (e.g. customFields)
+     * - Strings have whitespace stripped (Daktela strips spaces from phones etc.)
      */
     private function normalizeValue(mixed $value): mixed
     {
         if (is_array($value) && count($value) === 1 && array_is_list($value)) {
             $value = $value[0];
+        }
+
+        if (is_array($value)) {
+            return array_map(fn ($v) => $this->normalizeValue($v), $value);
         }
 
         if (is_string($value)) {
