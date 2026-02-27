@@ -55,6 +55,7 @@ Each entity type (`contact`, `account`, `activity`) can be configured independen
 | `direction` | string | `crm_to_cc`, `cc_to_crm`, or `bidirectional` |
 | `mapping_file` | string | Path to YAML mapping file (relative to config dir) |
 | `activity_types` | array | For activities only: which types to sync |
+| `auto_create_contact` | object | Auto-create a contact from account data (see [Sync Engine](05-sync-engine.md#auto-create-contact-from-account)) |
 
 ### Activity Types
 

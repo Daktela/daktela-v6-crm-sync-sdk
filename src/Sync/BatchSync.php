@@ -7,12 +7,15 @@ namespace Daktela\CrmSync\Sync;
 use Daktela\CrmSync\Adapter\ContactCentreAdapterInterface;
 use Daktela\CrmSync\Adapter\CrmAdapterInterface;
 use Daktela\CrmSync\Adapter\UpsertResult;
+use Daktela\CrmSync\Config\SkipIfExistsMode;
 use Daktela\CrmSync\Config\SyncConfiguration;
 use Daktela\CrmSync\Entity\Activity;
 use Daktela\CrmSync\Entity\ActivityType;
+use Daktela\CrmSync\Entity\Contact;
 use Daktela\CrmSync\Entity\EntityInterface;
 use Daktela\CrmSync\Mapping\FieldMapper;
 use Daktela\CrmSync\Mapping\MappingCollection;
+use Daktela\CrmSync\Mapping\NestedValue;
 use Daktela\CrmSync\Mapping\RelationConfig;
 use Daktela\CrmSync\State\SyncStateStoreInterface;
 use Daktela\CrmSync\Sync\Result\RecordResult;
@@ -162,6 +165,14 @@ final class BatchSync
             );
 
             $result->addRecord($record);
+
+            if ($record->status !== SyncStatus::Failed) {
+                $autoRecord = $this->autoCreateContactFromAccount($account, $record->targetId);
+                if ($autoRecord !== null) {
+                    $result->addRecord($autoRecord);
+                }
+            }
+
             $count++;
 
             if ($count >= $this->config->batchSize) {
@@ -479,6 +490,147 @@ final class BatchSync
             'entity' => $relation->entity,
             'count' => count($this->relationMaps[$relation->entity]),
         ]);
+    }
+
+    private function autoCreateContactFromAccount(
+        EntityInterface $account,
+        ?string $accountCcId,
+    ): ?RecordResult {
+        $contactMapping = $this->config->getAutoCreateContactMapping('account');
+        if ($contactMapping === null || $accountCcId === null) {
+            return null;
+        }
+
+        try {
+            $mapped = $this->fieldMapper->map(
+                $account, $contactMapping, SyncDirection::CrmToCc, $this->relationMaps,
+            );
+
+            $mapped['account'] = $accountCcId;
+
+            $entityConfig = $this->config->getEntityConfig('account');
+            $autoContactConfig = $entityConfig?->autoCreateContact;
+            $skipIfEmpty = $autoContactConfig->skipIfEmpty ?? [];
+
+            if ($skipIfEmpty !== [] && $this->allFieldsEmpty($mapped, $skipIfEmpty)) {
+                $this->logger->debug('Skip auto-contact: required fields are empty', [
+                    'account' => $accountCcId,
+                ]);
+                return null;
+            }
+
+            $contact = Contact::fromArray($mapped);
+            $lookupValue = $contact->get($contactMapping->lookupField);
+
+            if ($lookupValue !== null) {
+                $existing = $this->ccAdapter->findContactBy(
+                    [$contactMapping->lookupField => (string) $lookupValue],
+                );
+
+                if ($existing === null) {
+                    $skipFields = $autoContactConfig->skipIfExistsFields ?? [];
+                    $skipMode = $autoContactConfig->skipIfExistsMode ?? SkipIfExistsMode::All;
+
+                    if ($this->shouldSkipAutoContact($mapped, $accountCcId, $skipFields, $skipMode)) {
+                        $this->logger->debug('Skip auto-contact: existing contact covers info', [
+                            'account' => $accountCcId,
+                        ]);
+                        return null;
+                    }
+                }
+            }
+
+            $upsertResult = $this->ccAdapter->upsertContact($contactMapping->lookupField, $contact);
+
+            $status = match (true) {
+                $upsertResult->skipped => SyncStatus::Skipped,
+                $upsertResult->created => SyncStatus::Created,
+                default => SyncStatus::Updated,
+            };
+
+            return new RecordResult(
+                entityType: 'contact',
+                sourceId: $account->getId(),
+                targetId: $upsertResult->entity->getId(),
+                status: $status,
+            );
+        } catch (\Throwable $e) {
+            $this->logger->error('Failed to auto-create contact from account {id}: {error}', [
+                'id' => $account->getId(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return new RecordResult(
+                entityType: 'contact',
+                sourceId: $account->getId(),
+                targetId: null,
+                status: SyncStatus::Failed,
+                errorMessage: $e->getMessage(),
+            );
+        }
+    }
+
+    /**
+     * @param array<string, mixed> $mapped     Mapped contact data
+     * @param string[]             $skipFields CC field names to check
+     */
+    private function shouldSkipAutoContact(
+        array $mapped,
+        string $accountCcId,
+        array $skipFields,
+        SkipIfExistsMode $mode,
+    ): bool {
+        if ($skipFields === []) {
+            return false;
+        }
+
+        if ($mode === SkipIfExistsMode::All) {
+            $criteria = ['account' => $accountCcId];
+            foreach ($skipFields as $field) {
+                $value = NestedValue::get($mapped, $field);
+                if ($value === null || $value === '' || $value === []) {
+                    return false; // can't match all if a field is empty
+                }
+                $criteria[$field] = is_array($value) ? (string) reset($value) : (string) $value;
+            }
+
+            return $this->ccAdapter->findContactBy($criteria) !== null;
+        }
+
+        // Mode: any — skip if any single field matches
+        foreach ($skipFields as $field) {
+            $value = NestedValue::get($mapped, $field);
+            if ($value === null || $value === '' || $value === []) {
+                continue;
+            }
+
+            $existing = $this->ccAdapter->findContactBy([
+                'account' => $accountCcId,
+                $field => is_array($value) ? (string) reset($value) : (string) $value,
+            ]);
+
+            if ($existing !== null) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param array<string, mixed> $mapped
+     * @param string[]             $fields
+     */
+    private function allFieldsEmpty(array $mapped, array $fields): bool
+    {
+        foreach ($fields as $field) {
+            $value = NestedValue::get($mapped, $field);
+            if ($value !== null && $value !== '' && $value !== []) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     private function resolveSince(string $entityType): ?\DateTimeImmutable

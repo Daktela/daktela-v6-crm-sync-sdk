@@ -178,6 +178,75 @@ $engine = new SyncEngine(
 
 State is saved only when the batch completes successfully — meaning all records were processed (batch limit not hit) and none failed. This prevents skipping records due to partial syncs. See the [Production Deployment](09-production-deployment.md) guide for details on safety guarantees.
 
+## Auto-Create Contact from Account
+
+In Daktela, activities can only relate to contacts (not accounts). If an account has contact info (phone, email) and someone calls from that number, the activity won't be paired because there's no contact entity with that info.
+
+The `auto_create_contact` feature solves this by automatically creating a "default contact" from an account's contact info fields after each account sync. This contact links to the parent account and has the same phone/email, so Daktela can pair inbound activities to it.
+
+### Configuration
+
+Add `auto_create_contact` to the account entity in `sync.yaml`:
+
+```yaml
+sync:
+  entities:
+    account:
+      enabled: true
+      direction: crm_to_cc
+      mapping_file: "mappings/accounts.yaml"
+      auto_create_contact:
+        mapping_file: "mappings/account-contact.yaml"
+        skip_if_empty:
+          - email
+          - number
+        skip_if_exists:
+          - email
+          - number
+        skip_if_exists_mode: all  # or "any"
+```
+
+The referenced mapping file uses the same format as regular mappings. `crm_field` references CRM account entity fields, `cc_field` references Daktela contact fields:
+
+```yaml
+entity: contact
+lookup_field: name
+
+mappings:
+  - cc_field: title
+    crm_field: company_name
+  - cc_field: name
+    crm_field: external_id
+    transformers:
+      - name: prefix
+        params: { value: "company_" }
+  - cc_field: email
+    crm_field: email
+  - cc_field: number
+    crm_field: phone
+```
+
+### Behavior
+
+- The `account` field on the auto-created contact is always set to the parent account's Daktela ID — you don't need to map it.
+- The contact is upserted using the mapping's `lookup_field`, so subsequent syncs update it rather than creating duplicates.
+- Works in both batch sync and webhook sync.
+
+### Skip when empty with `skip_if_empty`
+
+The optional `skip_if_empty` lists CC field names that are checked after mapping. If **all** listed fields are empty (null, empty string, or empty array), the auto-contact is not created. This prevents creating useless contacts from accounts that have no contact info.
+
+The check runs before any API calls, so no network overhead is incurred when skipping.
+
+### Dedup with `skip_if_exists`
+
+The optional `skip_if_exists` lists CC field names to check before creating a new auto-contact. The `skip_if_exists_mode` controls how the fields are matched:
+
+- **`all`** (default) — skip only when a single existing contact under the same account matches **all** listed fields. This uses one API call with all criteria combined.
+- **`any`** — skip when **any** listed field matches an existing contact. Each field is checked independently (separate API calls), so matches can be on different contacts.
+
+This prevents duplicates when a real person contact has already been synced with the same email or phone. The check only runs when the auto-contact doesn't exist yet — if the auto-contact already exists, it's updated normally without re-checking.
+
 ## Force Full Sync
 
 Ignore saved state and sync all records:

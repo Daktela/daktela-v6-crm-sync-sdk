@@ -17,6 +17,7 @@ final readonly class EntitySyncConfig
         public SyncDirection $direction,
         public string $mappingFile,
         public array $activityTypes = [],
+        public ?AutoCreateContactConfig $autoCreateContact = null,
     ) {
     }
 }

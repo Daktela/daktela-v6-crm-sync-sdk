@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Daktela\CrmSync\Tests\Unit\Config;
 
+use Daktela\CrmSync\Config\SkipIfExistsMode;
 use Daktela\CrmSync\Config\YamlConfigLoader;
 use Daktela\CrmSync\Entity\ActivityType;
 use Daktela\CrmSync\Exception\ConfigurationException;
@@ -110,6 +111,46 @@ final class YamlConfigLoaderTest extends TestCase
         $this->expectException(ConfigurationException::class);
 
         $this->loader->loadRaw('/nonexistent/sync.yaml');
+    }
+
+    public function testAutoCreateContactConfigLoaded(): void
+    {
+        $config = $this->loader->load(__DIR__ . '/../../Fixtures/config/sync_with_auto_contact.yaml');
+
+        $accountConfig = $config->getEntityConfig('account');
+        self::assertNotNull($accountConfig);
+        self::assertNotNull($accountConfig->autoCreateContact);
+        self::assertSame('../mappings/account-contact.yaml', $accountConfig->autoCreateContact->mappingFile);
+        self::assertSame(['email', 'number'], $accountConfig->autoCreateContact->skipIfExistsFields);
+        self::assertSame(SkipIfExistsMode::All, $accountConfig->autoCreateContact->skipIfExistsMode);
+        self::assertSame(['email', 'number'], $accountConfig->autoCreateContact->skipIfEmpty);
+
+        $autoMapping = $config->getAutoCreateContactMapping('account');
+        self::assertNotNull($autoMapping);
+        self::assertSame('contact', $autoMapping->entityType);
+        self::assertSame('name', $autoMapping->lookupField);
+        self::assertCount(4, $autoMapping->mappings);
+    }
+
+    public function testAutoCreateContactSkipModeAny(): void
+    {
+        $config = $this->loader->load(__DIR__ . '/../../Fixtures/config/sync_with_auto_contact_any.yaml');
+
+        $accountConfig = $config->getEntityConfig('account');
+        self::assertNotNull($accountConfig);
+        self::assertNotNull($accountConfig->autoCreateContact);
+        self::assertSame(SkipIfExistsMode::Any, $accountConfig->autoCreateContact->skipIfExistsMode);
+    }
+
+    public function testAutoCreateContactConfigNullWhenNotSet(): void
+    {
+        $config = $this->loader->load(__DIR__ . '/../../Fixtures/config/sync.yaml');
+
+        $accountConfig = $config->getEntityConfig('account');
+        self::assertNotNull($accountConfig);
+        self::assertNull($accountConfig->autoCreateContact);
+
+        self::assertNull($config->getAutoCreateContactMapping('account'));
     }
 
     public function testEnvVarResolution(): void

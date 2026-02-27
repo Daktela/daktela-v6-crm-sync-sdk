@@ -54,6 +54,7 @@ final class YamlConfigLoader
 
         $entities = [];
         $mappings = [];
+        $autoCreateContactMappings = [];
 
         $entityConfigs = $data['sync']['entities'] ?? [];
         if (is_array($entityConfigs)) {
@@ -80,6 +81,23 @@ final class YamlConfigLoader
                     }
                 }
 
+                $autoCreateContact = null;
+                if (isset($config['auto_create_contact']) && is_array($config['auto_create_contact'])) {
+                    $acFile = (string) ($config['auto_create_contact']['mapping_file'] ?? '');
+                    $skipFields = (array) ($config['auto_create_contact']['skip_if_exists'] ?? []);
+                    $skipMode = SkipIfExistsMode::tryFrom(
+                        (string) ($config['auto_create_contact']['skip_if_exists_mode'] ?? ''),
+                    ) ?? SkipIfExistsMode::All;
+                    $skipIfEmpty = (array) ($config['auto_create_contact']['skip_if_empty'] ?? []);
+                    $autoCreateContact = new AutoCreateContactConfig($acFile, $skipFields, $skipMode, $skipIfEmpty);
+
+                    if ($acFile !== '') {
+                        $autoCreateContactMappings[(string) $type] = $this->mappingLoader->load(
+                            $configDir . '/' . $acFile,
+                        );
+                    }
+                }
+
                 $mappingFile = (string) ($config['mapping_file'] ?? '');
 
                 $entities[(string) $type] = new EntitySyncConfig(
@@ -87,6 +105,7 @@ final class YamlConfigLoader
                     direction: $direction,
                     mappingFile: $mappingFile,
                     activityTypes: $activityTypes,
+                    autoCreateContact: $autoCreateContact,
                 );
 
                 if ($mappingFile !== '') {
@@ -104,6 +123,7 @@ final class YamlConfigLoader
             entities: $entities,
             mappings: $mappings,
             webhookSecret: $webhookSecret,
+            autoCreateContactMappings: $autoCreateContactMappings,
         );
     }
 

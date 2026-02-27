@@ -14,6 +14,15 @@ sync:
       enabled: true
       direction: crm_to_cc
       mapping_file: "mappings/accounts.yaml"
+      auto_create_contact:
+        mapping_file: "mappings/account-contact.yaml"
+        skip_if_empty:            # Don't create auto-contact when all these CC fields are empty
+          - email
+          - number
+        skip_if_exists:
+          - email
+          - number
+        skip_if_exists_mode: all  # "all" (default) = skip when one contact matches ALL fields; "any" = skip when ANY field matches
     activity:
       enabled: true
       direction: cc_to_crm
