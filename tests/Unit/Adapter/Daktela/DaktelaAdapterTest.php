@@ -110,5 +110,23 @@ final class DaktelaAdapterTest extends TestCase
             ['customFields' => ['phone' => '+421999888777']],
             true,
         ];
+
+        yield 'stdClass from json_decode treated as array' => [
+            ['customFields' => (object) ['phone' => '+420553401520', 'web' => ['https://example.com']]],
+            ['customFields' => ['phone' => '+420 553 401 520', 'web' => 'https://example.com']],
+            false,
+        ];
+
+        yield 'text field whitespace change is detected' => [
+            ['title' => 'JohnDoe'],
+            ['title' => 'John Doe'],
+            true,
+        ];
+
+        yield 'text field extra whitespace is collapsed' => [
+            ['title' => 'John Doe'],
+            ['title' => '  John   Doe  '],
+            false,
+        ];
     }
 }

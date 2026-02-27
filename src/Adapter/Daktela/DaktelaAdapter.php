@@ -224,12 +224,18 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
 
     /**
      * Normalize a value for comparison to account for Daktela API transformations:
+     * - stdClass is cast to array (Daktela client uses json_decode without assoc flag)
      * - Single-element lists are unwrapped (Daktela wraps some string fields in arrays)
      * - Associative arrays are normalized recursively (e.g. customFields)
-     * - Strings have whitespace stripped (Daktela strips spaces from phones etc.)
+     * - Non-alphabetic strings (phones, codes) have whitespace fully stripped
+     * - Text strings (containing letters) are trimmed with internal whitespace collapsed
      */
     private function normalizeValue(mixed $value): mixed
     {
+        if ($value instanceof \stdClass) {
+            $value = (array) $value;
+        }
+
         if (is_array($value) && count($value) === 1 && array_is_list($value)) {
             $value = $value[0];
         }
@@ -239,7 +245,13 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         }
 
         if (is_string($value)) {
-            return preg_replace('/\s+/', '', $value);
+            // Non-alphabetic strings (phones, numeric codes): strip all whitespace
+            // Text strings (names, descriptions): trim + collapse internal whitespace
+            if (!preg_match('/[a-zA-Z]/', $value)) {
+                return preg_replace('/\s+/', '', $value);
+            }
+
+            return preg_replace('/\s+/', ' ', trim($value));
         }
 
         return $value;
