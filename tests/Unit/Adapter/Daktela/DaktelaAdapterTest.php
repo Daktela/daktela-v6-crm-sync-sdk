@@ -38,4 +38,65 @@ final class DaktelaAdapterTest extends TestCase
 
         self::assertSame('Activities', $constant);
     }
+
+    #[\PHPUnit\Framework\Attributes\DataProvider('hasChangesProvider')]
+    public function testHasChanges(array $existing, array $new, bool $expected): void
+    {
+        $adapter = new DaktelaAdapter(
+            'https://test.daktela.com',
+            'test-token',
+            'test-db',
+            new NullLogger(),
+        );
+
+        $method = new \ReflectionMethod($adapter, 'hasChanges');
+
+        self::assertSame($expected, $method->invoke($adapter, $existing, $new));
+    }
+
+    /** @return iterable<string, array{array<string, mixed>, array<string, mixed>, bool}> */
+    public static function hasChangesProvider(): iterable
+    {
+        yield 'identical data' => [
+            ['title' => 'John', 'email' => 'john@test.com'],
+            ['title' => 'John', 'email' => 'john@test.com'],
+            false,
+        ];
+
+        yield 'changed field' => [
+            ['title' => 'John', 'email' => 'john@test.com'],
+            ['title' => 'Jane', 'email' => 'john@test.com'],
+            true,
+        ];
+
+        yield 'phone with spaces vs stripped' => [
+            ['phone' => '+420553401520'],
+            ['phone' => '+420 553 401 520'],
+            false,
+        ];
+
+        yield 'url wrapped in array by Daktela' => [
+            ['web' => ['https://example.com']],
+            ['web' => 'https://example.com'],
+            false,
+        ];
+
+        yield 'url array vs different string' => [
+            ['web' => ['https://example.com']],
+            ['web' => 'https://other.com'],
+            true,
+        ];
+
+        yield 'extra fields in existing are ignored' => [
+            ['title' => 'John', 'database' => 'main', 'extra' => 'foo'],
+            ['title' => 'John'],
+            false,
+        ];
+
+        yield 'loose type comparison int vs string' => [
+            ['priority' => 123],
+            ['priority' => '123'],
+            false,
+        ];
+    }
 }

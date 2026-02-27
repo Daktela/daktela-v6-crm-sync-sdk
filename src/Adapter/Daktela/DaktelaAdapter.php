@@ -214,12 +214,30 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
     {
         foreach ($new as $key => $value) {
             $existingValue = $existing[$key] ?? null;
-            if ($existingValue != $value) {
+            if ($this->normalizeValue($existingValue) != $this->normalizeValue($value)) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * Normalize a value for comparison to account for Daktela API transformations:
+     * - Single-element arrays are unwrapped (Daktela wraps some string fields in arrays)
+     * - Strings are trimmed and whitespace is collapsed (Daktela strips spaces from phones etc.)
+     */
+    private function normalizeValue(mixed $value): mixed
+    {
+        if (is_array($value) && count($value) === 1 && array_is_list($value)) {
+            $value = $value[0];
+        }
+
+        if (is_string($value)) {
+            return preg_replace('/\s+/', '', $value);
+        }
+
+        return $value;
     }
 
     /**
