@@ -1,0 +1,21 @@
+daktela:
+  instance_url: "https://test.daktela.com"
+  access_token: "test-token"
+  database: "test-db"
+
+sync:
+  batch_size: 50
+  entities:
+    account:
+      enabled: true
+      direction: crm_to_cc
+      mapping_file: "../mappings/accounts.yaml"
+      auto_create_contact:
+        mapping_file: "../mappings/account-contact.yaml"
+        skip_if_exists:
+          - email
+          - number
+        skip_if_exists_mode: any
+
+webhook:
+  secret: "test-secret"

@@ -1,0 +1,12 @@
+entity: account
+lookup_field: name
+mappings:
+  - cc_field: title
+    crm_field: company_name
+  - cc_field: name
+    crm_field: external_id
+  - cc_field: customFields.industry
+    crm_field: industry
+    transformers:
+      - name: string_case
+        params: { case: lower }

@@ -1,0 +1,12 @@
+entity: contact
+lookup_field: email
+mappings:
+  - cc_field: title
+    crm_field: full_name
+  - cc_field: email
+    crm_field: email
+  - cc_field: number
+    crm_field: phone
+    transformers:
+      - name: phone_normalize
+        params: { format: e164 }

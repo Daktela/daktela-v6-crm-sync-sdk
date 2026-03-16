@@ -1,0 +1,81 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Daktela\CrmSync\State;
+
+use Daktela\CrmSync\Exception\StateStoreException;
+
+final class FileSyncStateStore implements SyncStateStoreInterface
+{
+    public function __construct(
+        private readonly string $filePath,
+    ) {
+    }
+
+    public function getLastSyncTime(string $entityType): ?\DateTimeImmutable
+    {
+        $data = $this->readData();
+        if (!isset($data[$entityType])) {
+            return null;
+        }
+
+        $time = \DateTimeImmutable::createFromFormat(\DateTimeInterface::ATOM, $data[$entityType]);
+
+        return $time !== false ? $time : null;
+    }
+
+    public function setLastSyncTime(string $entityType, \DateTimeImmutable $time): void
+    {
+        $data = $this->readData();
+        $data[$entityType] = $time->format(\DateTimeInterface::ATOM);
+        $this->writeData($data);
+    }
+
+    public function clear(string $entityType): void
+    {
+        $data = $this->readData();
+        unset($data[$entityType]);
+        $this->writeData($data);
+    }
+
+    public function clearAll(): void
+    {
+        $this->writeData([]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function readData(): array
+    {
+        if (!file_exists($this->filePath)) {
+            return [];
+        }
+
+        $contents = file_get_contents($this->filePath);
+        if ($contents === false) {
+            return [];
+        }
+
+        $data = json_decode($contents, true);
+
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * @param array<string, string> $data
+     */
+    private function writeData(array $data): void
+    {
+        $dir = dirname($this->filePath);
+        if (!is_dir($dir) && !mkdir($dir, 0o755, true)) {
+            throw StateStoreException::writeFailed($this->filePath);
+        }
+
+        $json = json_encode($data, JSON_PRETTY_PRINT | JSON_THROW_ON_ERROR);
+        if (file_put_contents($this->filePath, $json, LOCK_EX) === false) {
+            throw StateStoreException::writeFailed($this->filePath);
+        }
+    }
+}
