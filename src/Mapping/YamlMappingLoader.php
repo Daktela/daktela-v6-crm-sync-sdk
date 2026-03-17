@@ -71,10 +71,12 @@ final class YamlMappingLoader
             );
         }
 
-        if (!isset($item['crm_field']) || !is_string($item['crm_field'])) {
+        $hasStaticValue = array_key_exists('value', $item);
+
+        if (!$hasStaticValue && (!isset($item['crm_field']) || !is_string($item['crm_field']))) {
             throw ConfigurationException::invalidMappingFile(
                 $filePath,
-                sprintf('Mapping at index %d: missing or invalid "crm_field"', $index),
+                sprintf('Mapping at index %d: missing or invalid "crm_field" (or provide "value" for a static value)', $index),
             );
         }
 
@@ -130,11 +132,13 @@ final class YamlMappingLoader
 
         return new FieldMapping(
             ccField: $item['cc_field'],
-            crmField: $item['crm_field'],
+            crmField: (string) ($item['crm_field'] ?? ''),
             transformers: $transformers,
             multiValue: $multiValue,
             relation: $relation,
             append: (bool) ($item['append'] ?? false),
+            staticValue: $hasStaticValue ? $item['value'] : null,
+            hasStaticValue: $hasStaticValue,
         );
     }
 }

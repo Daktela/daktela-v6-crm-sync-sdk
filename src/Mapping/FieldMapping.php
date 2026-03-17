@@ -11,11 +11,13 @@ final readonly class FieldMapping
      */
     public function __construct(
         public string $ccField,
-        public string $crmField,
+        public string $crmField = '',
         public array $transformers = [],
         public ?MultiValueConfig $multiValue = null,
         public ?RelationConfig $relation = null,
         public bool $append = false,
+        public mixed $staticValue = null,
+        public bool $hasStaticValue = false,
     ) {
     }
 }

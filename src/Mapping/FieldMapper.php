@@ -46,7 +46,11 @@ final class FieldMapper
                 $writeField = $mapping->crmField;
             }
 
-            $value = $this->readNestedValue($entity, $readField);
+            if ($mapping->hasStaticValue) {
+                $value = $mapping->staticValue;
+            } else {
+                $value = $this->readNestedValue($entity, $readField);
+            }
             $value = $this->applyTransformers($value, $mapping->transformers);
 
             // Apply relation resolution if configured
