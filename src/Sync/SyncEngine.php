@@ -259,13 +259,21 @@ final class SyncEngine
             return;
         }
 
-        if ($result->getFailedCount() > 0) {
-            $this->logger->warning('State not saved for {entityType}: {failedCount} failed records', [
+        if ($result->getTotalCount() > 0 && $result->getFailedCount() === $result->getTotalCount()) {
+            $this->logger->warning('State not saved for {entityType}: all {failedCount} records failed', [
                 'entityType' => $entityType,
                 'failedCount' => $result->getFailedCount(),
             ]);
 
             return;
+        }
+
+        if ($result->getFailedCount() > 0) {
+            $this->logger->notice('State saved for {entityType} despite {failedCount} failed records (out of {total})', [
+                'entityType' => $entityType,
+                'failedCount' => $result->getFailedCount(),
+                'total' => $result->getTotalCount(),
+            ]);
         }
 
         $this->stateStore->setLastSyncTime($entityType, $syncStartTime);
