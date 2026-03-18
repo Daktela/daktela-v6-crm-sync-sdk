@@ -30,9 +30,13 @@ A universal sync SDK between **Daktela Contact Centre V6** and any CRM system. P
 composer require daktela/daktela-v6-crm-sync
 ```
 
+## Pre-Built Adapters
+
+The companion package [`daktela/daktela-crm-integrations`](https://github.com/Daktela/daktela-crm-integrations) provides ready-to-use adapters for 15 CRM/ERP systems — including HubSpot, Salesforce, Pipedrive, SugarCRM, Dynamics 365, Raynet, WooCommerce, and more. Install with `composer require daktela/daktela-crm-integrations`.
+
 ## Quick Start
 
-1. Create your CRM adapter implementing `CrmAdapterInterface`
+1. Install a pre-built adapter or create your own implementing `CrmAdapterInterface`
 2. Configure field mappings in YAML
 3. Wire up the `SyncEngine`
 

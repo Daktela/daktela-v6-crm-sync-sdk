@@ -109,9 +109,17 @@ mappings:
         params: { from: "Y-m-d H:i:s", to: "c" }
 ```
 
-### 3. Implement Your CRM Adapter
+### 3. Choose or Implement a CRM Adapter
 
-Create a class that implements `CrmAdapterInterface`. This is where you connect to your specific CRM system (Salesforce, HubSpot, Dynamics, etc.).
+**Option A: Use a pre-built adapter** from [`daktela/daktela-crm-integrations`](https://github.com/Daktela/daktela-crm-integrations):
+
+```bash
+composer require daktela/daktela-crm-integrations
+```
+
+Available adapters: HubSpot, Salesforce, Pipedrive, SugarCRM, Dynamics 365, Dynamics 365 Premise, Raynet, WooCommerce, Shoptet, MoneyS5, Abra, K2, Dynamics 365 Finance, Billingo, PrestaShop. Each adapter provides a `SyncEngineFactory` for one-line setup — see the [integrations documentation](https://github.com/Daktela/daktela-crm-integrations) for details.
+
+**Option B: Implement a custom adapter** by creating a class that implements `CrmAdapterInterface`.
 
 See [Implementing a CRM Adapter](04-implementing-crm-adapter.md) for a complete guide with examples.
 

@@ -4,10 +4,12 @@
 
 ```
 \RuntimeException
-  └── SyncException              # Base exception
-        ├── AdapterException     # Adapter read/write failures
-        ├── MappingException     # Transformer/mapping issues
-        └── ConfigurationException # Config file issues
+  └── SyncException                # Base exception
+        ├── AdapterException       # Adapter read/write failures
+        │     └── NotSupportedException  # Operation not supported by adapter
+        ├── MappingException       # Transformer/mapping issues
+        ├── ConfigurationException # Config file issues
+        └── StateStoreException    # Sync state persistence errors
 ```
 
 All SDK exceptions extend `SyncException`, which extends `\RuntimeException`. You can catch `SyncException` to handle all SDK-specific errors.
@@ -39,6 +41,32 @@ public function createActivity(Activity $activity): Activity
     }
 }
 ```
+
+## NotSupportedException
+
+Thrown by adapters that do not support certain operations — typically activity CRUD for read-only adapters (e-commerce platforms, ERPs without activity APIs):
+
+```php
+use Daktela\CrmSync\Exception\NotSupportedException;
+
+// Static factory methods:
+NotSupportedException::activityNotSupported('WooCommerce');
+// → "WooCommerce adapter does not support activity operations"
+
+NotSupportedException::operationNotSupported('Billingo', 'account search');
+// → "Billingo adapter does not support account search"
+```
+
+`NotSupportedException` extends `AdapterException`, so existing `AdapterException` catch blocks will handle it. Use it when implementing adapters for systems that lack certain API capabilities:
+
+```php
+public function createActivity(Activity $activity): Activity
+{
+    throw NotSupportedException::activityNotSupported('WooCommerce');
+}
+```
+
+The SDK's `ReadOnlyActivityTrait` (in `daktela-crm-integrations`) provides default implementations of all activity methods that throw this exception automatically.
 
 ## MappingException
 

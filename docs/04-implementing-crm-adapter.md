@@ -2,6 +2,8 @@
 
 The SDK requires you to implement `CrmAdapterInterface` for your specific CRM system.
 
+> **Pre-built adapters available:** Before implementing a custom adapter, check if your CRM already has one in the [`daktela/daktela-crm-integrations`](https://github.com/Daktela/daktela-crm-integrations) package. It includes ready-to-use adapters for HubSpot, Salesforce, Pipedrive, SugarCRM, Dynamics 365, Raynet, WooCommerce, Shoptet, MoneyS5, Abra, K2, Dynamics 365 Finance, Billingo, and PrestaShop.
+
 ## Interface
 
 ```php
@@ -223,15 +225,51 @@ final class SalesforceCrmAdapter implements CrmAdapterInterface
 }
 ```
 
+## Read-Only Adapters (No Activity Support)
+
+If your CRM/ERP doesn't have an activity API (e.g., e-commerce platforms, invoicing systems), throw `NotSupportedException` from all activity methods. The `daktela-crm-integrations` package provides a `ReadOnlyActivityTrait` that does this automatically:
+
+```php
+use Daktela\CrmIntegrations\Common\ReadOnlyActivityTrait;
+use Daktela\CrmSync\Adapter\CrmAdapterInterface;
+
+final class MyErpCrmAdapter implements CrmAdapterInterface
+{
+    use ReadOnlyActivityTrait;
+
+    protected function getAdapterName(): string
+    {
+        return 'MyERP';
+    }
+
+    // Only implement contact/account methods — activity methods are handled by the trait
+    // ...
+}
+```
+
+Or throw manually without the trait:
+
+```php
+use Daktela\CrmSync\Exception\NotSupportedException;
+
+public function createActivity(Activity $activity): Activity
+{
+    throw NotSupportedException::activityNotSupported('MyERP');
+}
+```
+
+When activity sync is configured for a read-only adapter, the sync engine will catch `NotSupportedException` and report it as a failure.
+
 ## Key Principles
 
 1. **Contacts and Accounts are read-only** — The CRM is the source of truth
 2. **Activities are writable** — Daktela pushes activity data to the CRM
 3. **Use generators for iteration** — `iterateContacts()` and `iterateAccounts()` should use `yield` for memory efficiency with large datasets
-3. **Support incremental sync** — When `$since` is provided, filter to only return records modified after that timestamp. When `null`, return all records (full sync).
-4. **Entity IDs are strings** — Map your CRM's native ID type to string
-5. **Throw `AdapterException`** for failures — The sync engine catches these per-record
-6. **Include all fields the mapping needs** — Check your YAML mapping to know which CRM fields to include
+4. **Support incremental sync** — When `$since` is provided, filter to only return records modified after that timestamp. When `null`, return all records (full sync).
+5. **Entity IDs are strings** — Map your CRM's native ID type to string
+6. **Throw `AdapterException`** for failures — The sync engine catches these per-record
+7. **Throw `NotSupportedException`** for unsupported operations — e.g., activity CRUD on read-only adapters
+8. **Include all fields the mapping needs** — Check your YAML mapping to know which CRM fields to include
 
 ## Account Relationship
 
