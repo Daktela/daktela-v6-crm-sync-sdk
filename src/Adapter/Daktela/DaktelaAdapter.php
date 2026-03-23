@@ -247,10 +247,23 @@ final class DaktelaAdapter implements ContactCentreAdapterInterface
         }
 
         if (is_array($value)) {
-            return array_map(fn ($v) => $this->normalizeValue($v), $value);
+            $normalized = array_map(fn ($v) => $this->normalizeValue($v), $value);
+            if (array_is_list($normalized)) {
+                sort($normalized);
+            }
+
+            return $normalized;
         }
 
         if (is_string($value)) {
+            // Date/datetime strings: normalize to canonical format
+            if (preg_match('/^\d{4}-\d{2}-\d{2}([ T]\d{2}:\d{2}(:\d{2})?)?/', $value)) {
+                $ts = strtotime($value);
+                if ($ts !== false) {
+                    return date('Y-m-d H:i:s', $ts);
+                }
+            }
+
             // Non-alphabetic strings (phones, numeric codes): strip all whitespace
             // Text strings (names, descriptions): trim + collapse internal whitespace
             if (!preg_match('/[a-zA-Z]/', $value)) {
