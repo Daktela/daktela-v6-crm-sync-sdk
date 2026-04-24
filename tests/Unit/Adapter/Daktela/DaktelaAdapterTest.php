@@ -146,5 +146,52 @@ final class DaktelaAdapterTest extends TestCase
             ['account' => 'acme'],
             false,
         ];
+
+        // Regression: commit 7ab3eeb — list arrays were reported as changed when
+        // Daktela returned elements in a different order than we sent.
+        yield 'list with reordered elements is not a change' => [
+            ['tags' => ['alpha', 'beta', 'gamma']],
+            ['tags' => ['gamma', 'alpha', 'beta']],
+            false,
+        ];
+
+        yield 'list with different content is detected' => [
+            ['tags' => ['alpha', 'beta']],
+            ['tags' => ['alpha', 'delta']],
+            true,
+        ];
+
+        yield 'nested list with reordered elements is not a change' => [
+            ['customFields' => ['tags' => ['alpha', 'beta', 'gamma']]],
+            ['customFields' => ['tags' => ['gamma', 'beta', 'alpha']]],
+            false,
+        ];
+
+        // Regression: commit 7ab3eeb — Daktela returns "2024-01-15" for date-only
+        // fields but we send "2024-01-15 00:00:00" (or vice versa), which was
+        // reported as a change despite representing the same instant.
+        yield 'date vs datetime midnight is not a change' => [
+            ['birthday' => '2024-01-15'],
+            ['birthday' => '2024-01-15 00:00:00'],
+            false,
+        ];
+
+        yield 'datetime with and without seconds is not a change' => [
+            ['last_contact' => '2024-01-15 14:30'],
+            ['last_contact' => '2024-01-15 14:30:00'],
+            false,
+        ];
+
+        yield 'ISO 8601 T separator is normalized to space' => [
+            ['last_contact' => '2024-01-15T14:30:00'],
+            ['last_contact' => '2024-01-15 14:30:00'],
+            false,
+        ];
+
+        yield 'different dates are still detected as change' => [
+            ['birthday' => '2024-01-15'],
+            ['birthday' => '2024-01-16'],
+            true,
+        ];
     }
 }
