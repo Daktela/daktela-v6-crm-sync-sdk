@@ -115,6 +115,67 @@ final class YamlConfigLoader
             }
         }
 
+        $customEntities = [];
+        $customEntityMappings = [];
+
+        $customEntityConfigs = $data['sync']['custom_entities'] ?? [];
+        if (is_array($customEntityConfigs)) {
+            // No closed set for `target` here — BatchSync validates at sync time so adding new
+            // platform targets (e.g. activity) doesn't require touching this loader.
+            foreach ($customEntityConfigs as $i => $entry) {
+                if (!is_array($entry)) {
+                    continue;
+                }
+
+                $name = (string) ($entry['name'] ?? '');
+                if ($name === '') {
+                    throw ConfigurationException::invalidMappingFile(
+                        $configPath,
+                        sprintf('custom_entities[%s] missing required "name"', (string) $i),
+                    );
+                }
+
+                $direction = SyncDirection::tryFrom((string) ($entry['direction'] ?? ''));
+                if ($direction === null) {
+                    throw ConfigurationException::invalidMappingFile(
+                        $configPath,
+                        sprintf('Invalid direction for custom entity "%s"', $name),
+                    );
+                }
+
+                $source = (string) ($entry['source'] ?? '');
+                if ($source === '') {
+                    throw ConfigurationException::invalidMappingFile(
+                        $configPath,
+                        sprintf('custom_entities[%s] missing required "source"', $name),
+                    );
+                }
+
+                $target = (string) ($entry['target'] ?? '');
+                if ($target === '') {
+                    throw ConfigurationException::invalidMappingFile(
+                        $configPath,
+                        sprintf('custom_entities[%s] missing required "target"', $name),
+                    );
+                }
+
+                $mappingFile = (string) ($entry['mapping_file'] ?? '');
+
+                $customEntities[] = new CustomEntitySyncConfig(
+                    name: $name,
+                    enabled: (bool) ($entry['enabled'] ?? false),
+                    direction: $direction,
+                    source: $source,
+                    target: $target,
+                    mappingFile: $mappingFile,
+                );
+
+                if ($mappingFile !== '') {
+                    $customEntityMappings[$name] = $this->mappingLoader->load($configDir . '/' . $mappingFile);
+                }
+            }
+        }
+
         return new SyncConfiguration(
             instanceUrl: $instanceUrl,
             accessToken: $accessToken,
@@ -124,6 +185,8 @@ final class YamlConfigLoader
             mappings: $mappings,
             webhookSecret: $webhookSecret,
             autoCreateContactMappings: $autoCreateContactMappings,
+            customEntities: $customEntities,
+            customEntityMappings: $customEntityMappings,
         );
     }
 
