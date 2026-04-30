@@ -143,4 +143,39 @@ final class FakeCrmAdapter implements CrmAdapterInterface
     {
         return true;
     }
+
+    /** @var array<string, list<array<string, mixed>>> Pre-loaded records keyed by entity name. */
+    public array $customEntities = [];
+
+    public function iterateCustomEntity(string $entityName, ?\DateTimeImmutable $since = null, int $offset = 0): \Generator
+    {
+        $this->iterateCalls[] = ['type' => "custom:{$entityName}", 'since' => $since];
+
+        $items = array_slice($this->customEntities[$entityName] ?? [], $offset);
+        foreach ($items as $record) {
+            yield $record;
+        }
+    }
+
+    public function findCustomEntity(string $entityName, string $id): ?array
+    {
+        foreach ($this->customEntities[$entityName] ?? [] as $record) {
+            if (isset($record['id']) && (string) $record['id'] === $id) {
+                return $record;
+            }
+        }
+
+        return null;
+    }
+
+    public function findCustomEntityByLookup(string $entityName, string $field, string $value): ?array
+    {
+        foreach ($this->customEntities[$entityName] ?? [] as $record) {
+            if (isset($record[$field]) && (string) $record[$field] === $value) {
+                return $record;
+            }
+        }
+
+        return null;
+    }
 }

@@ -45,4 +45,18 @@ interface CrmAdapterInterface
     public function upsertActivity(string $lookupField, Activity $activity): Activity;
 
     public function ping(): bool;
+
+    // Custom entities (read-only) — generic by-name access to any CRM-side object the adapter supports.
+    // Used by sync.custom_entities[] to feed records into a Daktela target (contact / account / activity).
+    // Returned arrays are flat associative records; the mapping layer handles the rest.
+    // Adapters that don't support a given $entityName should throw NotSupportedException.
+
+    /** @return \Generator<int, array<string, mixed>> */
+    public function iterateCustomEntity(string $entityName, ?\DateTimeImmutable $since = null, int $offset = 0): \Generator;
+
+    /** @return array<string, mixed>|null */
+    public function findCustomEntity(string $entityName, string $id): ?array;
+
+    /** @return array<string, mixed>|null */
+    public function findCustomEntityByLookup(string $entityName, string $field, string $value): ?array;
 }

@@ -6,11 +6,15 @@ namespace Daktela\CrmSync\Sync\Result;
 
 final readonly class FullSyncResult
 {
+    /**
+     * @param array<string, SyncResult> $customEntities keyed by CustomEntitySyncConfig::$name
+     */
     public function __construct(
         public ?SyncResult $account = null,
         public ?SyncResult $autoContact = null,
         public ?SyncResult $contact = null,
         public ?SyncResult $activity = null,
+        public array $customEntities = [],
     ) {
     }
 
@@ -32,6 +36,9 @@ final readonly class FullSyncResult
         }
         if ($this->activity !== null) {
             $result['activity'] = $this->activity;
+        }
+        foreach ($this->customEntities as $name => $entryResult) {
+            $result["custom:{$name}"] = $entryResult;
         }
 
         return $result;

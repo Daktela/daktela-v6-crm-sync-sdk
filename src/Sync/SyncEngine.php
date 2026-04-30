@@ -136,7 +136,46 @@ final class SyncEngine
                 $this->saveState('activity', $syncStartTime, $activityResult);
             }
 
-            return new FullSyncResult($accountResult, $autoContactResult, $contactResult, $activityResult);
+            // Step 5: Sync configured custom entities. Runs after typed slots so relation maps
+            // and other state populated by accounts/contacts are available.
+            $customEntityResults = [];
+            foreach ($this->config->getEnabledCustomEntities() as $customEntry) {
+                $mapping = $this->config->getCustomEntityMapping($customEntry->name);
+                if ($mapping === null) {
+                    $this->logger->warning('Skipping custom entity "{name}": no mapping loaded', [
+                        'name' => $customEntry->name,
+                    ]);
+                    continue;
+                }
+
+                $this->logger->info('Full sync: starting custom entity {name} (source: {source}, target: {target})', [
+                    'name' => $customEntry->name,
+                    'source' => $customEntry->source,
+                    'target' => $customEntry->target,
+                ]);
+
+                $this->batchSync->resetOffsets();
+                $syncStartTime = new \DateTimeImmutable();
+                $entryResult = new SyncResult();
+                do {
+                    $batch = $this->batchSync->syncCustomEntity($customEntry, $mapping);
+                    if ($onBatch !== null) {
+                        $onBatch("custom:{$customEntry->name}", $batch);
+                    }
+                    $entryResult->mergeCounts($batch);
+                } while (!$batch->isExhausted());
+                $entryResult->finish();
+                $this->saveState("custom:{$customEntry->name}", $syncStartTime, $entryResult);
+                $customEntityResults[$customEntry->name] = $entryResult;
+            }
+
+            return new FullSyncResult(
+                $accountResult,
+                $autoContactResult,
+                $contactResult,
+                $activityResult,
+                $customEntityResults,
+            );
         } finally {
             $this->batchSync->setForceFullSync(false);
         }

@@ -12,6 +12,8 @@ final class SyncConfiguration
      * @param array<string, EntitySyncConfig> $entities
      * @param array<string, MappingCollection> $mappings
      * @param array<string, MappingCollection> $autoCreateContactMappings keyed by entity type
+     * @param CustomEntitySyncConfig[] $customEntities
+     * @param array<string, MappingCollection> $customEntityMappings keyed by CustomEntitySyncConfig::$name
      */
     public function __construct(
         public readonly string $instanceUrl,
@@ -22,6 +24,8 @@ final class SyncConfiguration
         public readonly array $mappings,
         public readonly string $webhookSecret = '',
         public readonly array $autoCreateContactMappings = [],
+        public readonly array $customEntities = [],
+        public readonly array $customEntityMappings = [],
     ) {
     }
 
@@ -45,5 +49,16 @@ final class SyncConfiguration
         $config = $this->getEntityConfig($entityType);
 
         return $config !== null && $config->enabled;
+    }
+
+    /** @return CustomEntitySyncConfig[] */
+    public function getEnabledCustomEntities(): array
+    {
+        return array_values(array_filter($this->customEntities, static fn (CustomEntitySyncConfig $c) => $c->enabled));
+    }
+
+    public function getCustomEntityMapping(string $name): ?MappingCollection
+    {
+        return $this->customEntityMappings[$name] ?? null;
     }
 }

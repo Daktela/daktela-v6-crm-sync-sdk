@@ -268,6 +268,89 @@ final class BatchSync
     }
 
     /**
+     * Sync one batch of records from a configured custom entity into its target Daktela entity.
+     * Records flow source → target via the per-entry mapping; the target's existing upsert path
+     * is reused so relation maps and other downstream logic stay consistent.
+     */
+    public function syncCustomEntity(
+        \Daktela\CrmSync\Config\CustomEntitySyncConfig $entry,
+        MappingCollection $mapping,
+    ): SyncResult {
+        $offsetKey = "custom:{$entry->name}";
+        $since = $this->resolveSince($offsetKey);
+        $offset = $this->offsets[$offsetKey] ?? 0;
+        $result = new SyncResult();
+        $count = 0;
+        $exhausted = true;
+
+        $upsertFn = $this->buildUpsertFn($entry->target);
+
+        foreach ($this->crmAdapter->iterateCustomEntity($entry->source, $since, $offset) as $rawRecord) {
+            $entity = $this->wrapForTarget($entry->target, $rawRecord);
+
+            $record = $this->syncEntityToCc(
+                entity: $entity,
+                mapping: $mapping,
+                entityType: $entry->target,
+                upsertFn: $upsertFn,
+            );
+
+            $result->addRecord($record);
+            $count++;
+
+            if ($count >= $this->config->batchSize) {
+                $exhausted = false;
+                break;
+            }
+        }
+
+        $result->setExhausted($exhausted);
+        $result->finish();
+
+        if ($exhausted) {
+            $this->offsets[$offsetKey] = 0;
+        } else {
+            $this->offsets[$offsetKey] = $offset + $count;
+        }
+
+        $this->logger->info('Batch custom entity {name} sync completed (source: {source}, target: {target})', [
+            'name' => $entry->name,
+            'source' => $entry->source,
+            'target' => $entry->target,
+            'total' => $result->getTotalCount(),
+            'created' => $result->getCreatedCount(),
+            'updated' => $result->getUpdatedCount(),
+            'skipped' => $result->getSkippedCount(),
+            'failed' => $result->getFailedCount(),
+            'incremental' => $since !== null,
+        ]);
+
+        return $result;
+    }
+
+    /**
+     * @param array<string, mixed> $rawRecord
+     */
+    private function wrapForTarget(string $target, array $rawRecord): EntityInterface
+    {
+        $id = isset($rawRecord['id']) ? (string) $rawRecord['id'] : null;
+        unset($rawRecord['id']);
+
+        return match ($target) {
+            \Daktela\CrmSync\Config\CustomEntitySyncConfig::TARGET_CONTACT
+                => new Contact($id, $rawRecord),
+            \Daktela\CrmSync\Config\CustomEntitySyncConfig::TARGET_ACCOUNT
+                => new \Daktela\CrmSync\Entity\Account($id, $rawRecord),
+            default => throw new \LogicException(sprintf(
+                'custom_entities target "%s" is not supported by ContactCentreAdapterInterface yet. '
+                . 'Supported targets: contact, account. Extend BatchSync::wrapForTarget() and '
+                . 'buildUpsertFn() to add more.',
+                $target,
+            )),
+        };
+    }
+
+    /**
      * @param callable(string, array<string, mixed>): UpsertResult $upsertFn
      */
     private function syncEntityToCc(
